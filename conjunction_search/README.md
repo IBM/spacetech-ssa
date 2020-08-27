@@ -34,7 +34,7 @@ Then you should be able to access the conjunction search UI at <http://localhost
 
 ## Environment Variables
 
-The service expects that you have a file named `cos-vars.env` that sets environment variables that are used inside the docker container to either use test data or retrieve the needed pickle file from [this COS bucket](https://cloud.ibm.com/objectstorage/crn%3Av1%3Abluemix%3Apublic%3Acloud-object-storage%3Aglobal%3Aa%2F30fa06c653644d7ba6b9948af64b7ab3%3A204afe80-9e57-413b-904a-a98e978c92c1%3A%3A?bucket=ag-ssa-preds&bucketRegion=us-east&endpoint=s3.us-east.cloud-object-storage.appdomain.cloud&paneId=bucket_overview). You can create this file by
+The service expects that you have a file named `cos-vars.env` that sets environment variables that are used inside the docker container to either use test data or retrieve the needed pickle file from [Cloud Object Storage](https://cloud.ibm.com/docs/cloud-object-storage). Create a new Cloud Object Storage instance and create the file by
 
 ```sh
 cp cos-vars.env.example cos-vars.env
