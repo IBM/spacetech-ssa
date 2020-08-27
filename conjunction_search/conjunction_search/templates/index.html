@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <!-- Tell IE to use the latest, best version. -->
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+        <!-- Make the app on mobile take up the full browser screen and disable user scaling. -->
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.71/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.71/Build/Cesium/Widgets/widgets.css"
+          rel="stylesheet">
+    <link rel="stylesheet" href="static/index.css" media="screen">
+  </head>
+  <body>
+    <div id="cesiumContainer" class="fullSize"></div>
+    <div class="backdrop" id="menu">
+      <h2>Conjunction Search</h2>
+      <span><strong>Resident Space Object</strong></span>
+      <div class="nowrap">
+        <select id="rsoSelect">
+          {% for rso in rsos %}
+            <option value="{{ rso.rso_id }}">{{ rso.rso_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <br>
+      <span><strong>Search Type</strong></span>
+      <div class="nowrap">
+        <input id="knnSearch" name="searchType" type="radio"
+               onchange="hideShow('selectRadius', 'selectKNN');"
+               checked/>
+        <label for="knnSearch">Number of Nearest RSOs</label>
+      </div>
+      <div class="nowrap">
+        <input id="radiusSearch" name="searchType" type="radio"
+               onclick="hideShow('selectKNN', 'selectRadius');">
+        <label for="radiusSearch">Radius</label>
+      </div>
+      <br>
+      <div class="nowrap" id="selectKNN">
+        <span><strong>Number of Nearest RSOs</strong></span>
+        <br>
+        <input type="range" min="1" max="10" value="1" class="slider"
+               id="numKNNs" onchange="updateTextInput('numKNNsText', this.value);">
+        <input type="text" id="numKNNsText" value="1" readonly/>
+      </div>
+      <div class="nowrap" id="selectRadius" style="display:none">
+        <span><strong>Radius (meters)</strong></span>
+        <br>
+        <input type="range" min="1" max="1000000" value="10000"
+               class="slider" id="radius"
+               onchange="updateTextInput('radiusText', this.value);">
+        <input type="text" id="radiusText" value="10000" readonly/>
+      </div>
+      <br>
+      <div class="nowrap">
+        <input type="submit" onclick="showOrbits();"/>
+      </div>
+    </div>
+    <script src="static/app.js"></script>
+  </body>
+</html>
