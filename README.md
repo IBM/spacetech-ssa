@@ -27,6 +27,10 @@ The [orbital prediction component](orbit_prediction/README.md) combines physics 
 
 The [conjunction search component](conjunction_search/README.md) combs through future orbit predictions to determine when and where two RSOs may come close to each other based on user provided search parameters.
 
+# Live Demo
+
+The SSA solution demo can be accessed at https://spaceorbits.net/
+
 
 # License
 
