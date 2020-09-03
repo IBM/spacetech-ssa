@@ -15,6 +15,25 @@ Once we have made predictions on where RSOs in LEO are going to be in the future
 A [Makefile](Makefile) is provided to automate the tasks of building and running the web service in a Docker container.
 
 
+## Environment Variables
+
+The service expects that you have a file named `vars.env` that sets environment variables that are used inside the docker container to either use test data or retrieve the needed pickle file from [Cloud Object Storage](https://cloud.ibm.com/docs/cloud-object-storage). Create a new Cloud Object Storage instance and create the file by
+
+```sh
+cp vars.env.example vars.env
+```
+
+and then supplying the values for the following environment variables:
+
+-   `DEV`: If set to `true`, uses the test data otherwise pulls the data from COS
+    `CESIUM_API_KEY`: The API key use to fetch 3D visualization assets.  See the [tutorial here](https://cesium.com/docs/tutorials/getting-started/) for creating an account and getting an access token.
+-   `COS_ENDPOINT`: The [endpoint](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints#endpoints-region) used by the client to access the bucket.
+-   `COS_API_KEY_ID`: The API secret key to authenticate with. (Optional)
+-   `COS_INSTANCE_CRN`: The bucket instance CRN. (Optional)
+-   `COS_BUCKET`: The COS bucket that the CSV file is in. (Optiona)
+-   `COS_FILENAME`: The filename of the pickle file in the `COS_BUCKET`. (Optional)
+
+
 ## Building and Running the Service
 
 The docker container can be built with
@@ -32,19 +51,3 @@ make run_dev
 Then you should be able to access the conjunction search UI at <http://localhost:8080>.
 
 
-## Environment Variables
-
-The service expects that you have a file named `cos-vars.env` that sets environment variables that are used inside the docker container to either use test data or retrieve the needed pickle file from [Cloud Object Storage](https://cloud.ibm.com/docs/cloud-object-storage). Create a new Cloud Object Storage instance and create the file by
-
-```sh
-cp cos-vars.env.example cos-vars.env
-```
-
-and then supplying the values for the following environment variables:
-
--   `DEV`: If set to `true`, uses the test data otherwise pulls the data from COS
--   `COS_ENDPOINT`: The [endpoint](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints#endpoints-region) used by the client to access the bucket.
--   `COS_API_KEY_ID`: The API secret key to authenticate with.
--   `COS_INSTANCE_CRN`: The bucket instance CRN.
--   `COS_BUCKET`: The COS bucket that the CSV file is in.
--   `COS_FILENAME`: The filename of the pickle file in the `COS_BUCKET`.

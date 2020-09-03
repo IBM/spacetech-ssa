@@ -20,16 +20,10 @@ build:
 
 run: build
 	docker run --rm -i -t \
-        -p 8080:80 \
-        --env-file=cos-vars.env \
+        -p 8080:8080 \
+        --env-file=vars.env \
         --name ssa-conj-search \
         ssa-conj-search:latest
 
-run_dev: build
-	docker run --rm -i -t \
-        -p 8080:80 \
-	-e DEV=true \
-        --name ssa-conj-search \
-        ssa-conj-search:latest
 clean:
 	docker rmi ssa-conj-search:latest

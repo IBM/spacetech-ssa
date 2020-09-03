@@ -24,6 +24,8 @@ from conjunction_search import get_nns_for_object, build_kd_forest
 app = Flask(__name__)
 DEV = bool(os.environ.get('DEV', False))
 
+cesium_api_key = os.environ.get('CESIUM_API_KEY', '')
+
 
 def get_dataframe_from_cos():
     """Fetches the orbital prediction pandas DataFrame
@@ -114,7 +116,9 @@ def _make_czml_resp(rso_id, conj_results):
 @app.route('/', methods=['GET'])
 def ui():
     rsos = orbit_df[['rso_name', 'rso_id']].to_dict(orient='records')
-    return render_template('index.html', rsos=rsos)
+    return render_template('index.html',
+                           rsos=rsos,
+                           cesium_api_key=cesium_api_key)
 
 
 @app.route('/conjunction_search/<rso_id>', methods=['GET'])
