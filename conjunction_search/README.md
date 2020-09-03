@@ -45,7 +45,7 @@ make build
 and the application can be run locally via
 
 ```sh
-make run_dev
+make run
 ```
 
 Then you should be able to access the conjunction search UI at <http://localhost:8080>.
