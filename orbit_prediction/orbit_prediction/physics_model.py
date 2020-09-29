@@ -139,17 +139,17 @@ def predict_orbit(window):
     # The rows that we will predict the orbit for are all the rows in the
     # `window` but the last row
     future_rows = window.iloc[:-1].reset_index()
+    # We add the epoch and the state vector components of the starting row
+    # to the rows we will use the physics model to make predictions for
     future_rows['start_epoch'] = start_epoch
+    state_vect_comps = ['r_x', 'r_y', 'r_z', 'v_x', 'v_y', 'v_z']
+    for svc in state_vect_comps:
+        future_rows[f'start_{svc}'] = start_row[svc]
     # Calculate the elapsed time from the starting epoch to the
     # the epoch of all the rows to make predictions for
     time_deltas = future_rows.epoch - future_rows.start_epoch
     future_rows['elapsed_seconds'] = time_deltas.dt.total_seconds()
-    physics_cols = ['physics_pred_r_x',
-                    'physics_pred_r_y',
-                    'physics_pred_r_z',
-                    'physics_pred_v_x',
-                    'physics_pred_v_y',
-                    'physics_pred_v_z']
+    physics_cols = [f'physics_pred_{svc}' for svc in state_vect_comps]
     # Predict the state vectors for each of the rows in the "future"
     future_rows[physics_cols] = future_rows.elapsed_seconds.apply(orbit_propagator)
     return future_rows
