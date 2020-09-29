@@ -184,8 +184,8 @@ def predict_orbits(df,
     pred_window_length = f'{n_pred_days}d'
     # For each row in `df` we create a window of all of the observations for
     # that RSO that are within `n_pred_days` of the given row
-    windows = [w for w in epoch_df.groupby('rso_id').rolling(pred_window_length)
-               if w.shape[0] == n_pred_days]
+    window_cols = ['rso_id', pd.Grouper(freq=pred_window_length)]
+    windows = [w[1] for w in epoch_df.groupby(window_cols)]
     # Predict the orbits in each window in parallel
     window_dfs = Parallel(n_jobs=-1)(delayed(predict_orbit)(w) for w in tqdm(windows))
     # Join all of the window prediction DataFrames into a single DataFrame
