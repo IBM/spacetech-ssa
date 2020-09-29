@@ -118,7 +118,7 @@ The CLI to create a training data set has the following arguments:
 -   `--input_path`: The path to the parquet file to load the orbit observations from.
 -   `--output_path`: The path to save the prediction/error training dataset to.
 -   `--last_n_days`: Only use observations from the last \`n\` days when creating the prediction windows. Defaults to 30.
--   `--n_pred_days`: The number days in the prediction window. Defaults to 7.
+-   `--n_pred_days`: The number days in the prediction window. Defaults to 3.
 
 
 ### Resulting Data
@@ -223,7 +223,7 @@ with the following arguments:
 -   `--st_password`: The password for space-track.org
 -   `--norad_id_file`: The path to a text file containing a single NORAD ID on each row to fetch orbit data for. If no file is passed then orbit data for all LEO RSOs will be fetched.
 -   `--ml_model_dir`: The path to the directory containing the error prediction models serialized as JSON.
--   `--n_days`: The number of days in the future to make orbit predictions for, defaults to 7.
+-   `--n_days`: The number of days in the future to make orbit predictions for, defaults to 3.
 -   `--timestep`: The frequency in seconds to make orbit predictions for, defaults 600
 -   `--output_path` The path to save the orbit prediction pickle file to. These results can be used directly by the [conjunction search UI](../conjunction_search/README.md) to search and visualize what the predicted space traffic will look like.
 

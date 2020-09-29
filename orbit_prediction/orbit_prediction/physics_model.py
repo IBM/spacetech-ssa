@@ -156,7 +156,7 @@ def predict_orbit(window):
 
 
 DEFAULT_LAST_N_DAYS = 30
-DEFAULT_N_PRED_DAYS = 7
+DEFAULT_N_PRED_DAYS = 3
 
 
 def predict_orbits(df,

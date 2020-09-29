@@ -102,7 +102,7 @@ def predict_orbit(row, pred_start, timesteps):
     return np.stack(ts_preds, axis=0)
 
 
-DEFAULT_N_DAYS = 7
+DEFAULT_N_DAYS = 3
 DEFAULT_TIMESTEP = 600
 
 def predict_orbits(df, ml_models,
