@@ -14,5 +14,23 @@ This project aims to be an experimental lab and playground for using ML to impro
 -   Quickly perform a temporal-spatial search of orbit predictions to identify conjunctions based on parameterized queries.
 -   Visualize when and where conjunctions may occur.
 
+## Components
+
+The SSA solution is currently composed of two components.
+
+
+### Orbit Prediction
+
+The [orbital prediction component](../orbit_prediction/README.md) combines physics and machine learning models to predict the future path of ASOs.
+
+
+### Conjunction search
+
+The [conjunction search component](../conjunction_search/README.md) combs through future orbit predictions to determine when and where two ASOs may come close to each other based on user provided search parameters.
+
+### Demo
+
+A demo UI and 3-dimensional visualization for the conjunction search service can be found [here](https://spaceorbits.net/).
+
 ## Articles
 [The International Space Station and the 50 Most Dangerous ASOs](iss_top50.md)
