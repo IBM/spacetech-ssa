@@ -1,37 +1,13 @@
-## Welcome to GitHub Pages
+## SSA in LEO
 
-You can use the [editor on GitHub](https://github.com/IBM/spacetech-ssa/edit/master/docs/index.md) to maintain and preview the content for your website in Markdown files.
+[Low earth orbit](https://en.wikipedia.org/wiki/Low_Earth_orbit) (LEO) is a crowded place and the number of anthropogenic space objects (ASOs) entering LEO is rapidly escalating. With this population boom also comes the inevitable increase in close encounters (conjunctions) between objects. The heart of the space situational awareness (SSA) problem is to predict where ASOs are and where they are going; everything from a spec of paint to the International Space Station.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+The current state of the art methods for orbit prediction are physics based models which require extremely accurate knowledge of the object's trajectory, the environment in which it operates, and the intent of the object to maneuver. In practice we do not have access to this data. Trajectories are measured infrequently from noisy ground based radar systems, our understanding of space weather and atmospheric density is limited, and satellite operators are not keen on sharing their plans to maneuver.
 
-### Markdown
+This project aims to be an experimental lab and playground for using ML to improve SSA and provides an end-to-end pipeline to:
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/IBM/spacetech-ssa/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+-   ETL orbit data about ASOs in LEO from the USSTRATCOM Space Track API.
+-   Make orbit predictions based on a physical model.
+-   Train and use machine learning models to learn the error in physics based orbit prediction models.
+-   Quickly perform a temporal-spatial search of orbit predictions to identify conjunctions based on parameterized queries.
+-   Visualize when and where conjunctions may occur.
