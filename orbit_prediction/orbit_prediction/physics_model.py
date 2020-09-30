@@ -139,24 +139,24 @@ def predict_orbit(window):
     # The rows that we will predict the orbit for are all the rows in the
     # `window` but the last row
     future_rows = window.iloc[:-1].reset_index()
+    # We add the epoch and the state vector components of the starting row
+    # to the rows we will use the physics model to make predictions for
     future_rows['start_epoch'] = start_epoch
+    state_vect_comps = ['r_x', 'r_y', 'r_z', 'v_x', 'v_y', 'v_z']
+    for svc in state_vect_comps:
+        future_rows[f'start_{svc}'] = start_row[svc]
     # Calculate the elapsed time from the starting epoch to the
     # the epoch of all the rows to make predictions for
     time_deltas = future_rows.epoch - future_rows.start_epoch
     future_rows['elapsed_seconds'] = time_deltas.dt.total_seconds()
-    physics_cols = ['physics_pred_r_x',
-                    'physics_pred_r_y',
-                    'physics_pred_r_z',
-                    'physics_pred_v_x',
-                    'physics_pred_v_y',
-                    'physics_pred_v_z']
+    physics_cols = [f'physics_pred_{svc}' for svc in state_vect_comps]
     # Predict the state vectors for each of the rows in the "future"
     future_rows[physics_cols] = future_rows.elapsed_seconds.apply(orbit_propagator)
     return future_rows
 
 
 DEFAULT_LAST_N_DAYS = 30
-DEFAULT_N_PRED_DAYS = 7
+DEFAULT_N_PRED_DAYS = 3
 
 
 def predict_orbits(df,
@@ -184,8 +184,8 @@ def predict_orbits(df,
     pred_window_length = f'{n_pred_days}d'
     # For each row in `df` we create a window of all of the observations for
     # that RSO that are within `n_pred_days` of the given row
-    windows = [w for w in epoch_df.groupby('rso_id').rolling(pred_window_length)
-               if w.shape[0] == n_pred_days]
+    window_cols = ['rso_id', pd.Grouper(freq=pred_window_length)]
+    windows = [w[1] for w in epoch_df.groupby(window_cols)]
     # Predict the orbits in each window in parallel
     window_dfs = Parallel(n_jobs=-1)(delayed(predict_orbit)(w) for w in tqdm(windows))
     # Join all of the window prediction DataFrames into a single DataFrame

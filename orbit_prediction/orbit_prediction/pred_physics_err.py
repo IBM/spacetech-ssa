@@ -166,7 +166,8 @@ def build_train_test_sets(df, test_size=0.2):
     """
     # Features are the physics predicted state vectors and the amount of
     # time in seconds into the future the prediction was made
-    feature_cols = ['elapsed_seconds'] + get_state_vect_cols('physics_pred')
+    feature_cols = ['elapsed_seconds'] + get_state_vect_cols('physics_pred') \
+        + get_state_vect_cols('start')
     # The target values are the errors between the physical model predictions
     # and the ground truth observations
     target_cols = get_state_vect_cols('physics_err')
