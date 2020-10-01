@@ -16,11 +16,11 @@
     <div id="cesiumContainer" class="fullSize"></div>
     <div class="backdrop" id="menu">
       <h2>Conjunction Search</h2>
-      <span><strong>Resident Space Object</strong></span>
+      <span><strong>Anthropogenic Space Object</strong></span>
       <div class="nowrap">
-        <select id="rsoSelect">
-          {% for rso in rsos %}
-            <option value="{{ rso.rso_id }}">{{ rso.rso_name }}</option>
+        <select id="asoSelect">
+          {% for aso in asos %}
+            <option value="{{ aso.aso_id }}">{{ aso.aso_name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -30,7 +30,7 @@
         <input id="knnSearch" name="searchType" type="radio"
                onchange="hideShow('selectRadius', 'selectKNN');"
                checked/>
-        <label for="knnSearch">Number of Nearest RSOs</label>
+        <label for="knnSearch">Number of Nearest ASOs</label>
       </div>
       <div class="nowrap">
         <input id="radiusSearch" name="searchType" type="radio"
@@ -39,7 +39,7 @@
       </div>
       <br>
       <div class="nowrap" id="selectKNN">
-        <span><strong>Number of Nearest RSOs</strong></span>
+        <span><strong>Number of Nearest ASOs</strong></span>
         <br>
         <input type="range" min="1" max="10" value="1" class="slider"
                id="numKNNs" onchange="updateTextInput('numKNNsText', this.value);">

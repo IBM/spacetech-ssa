@@ -44,10 +44,10 @@ def get_latest_orbit_data(space_track_user,
 
     :param norad_ids: An optional list of NORAD IDs to fetch the TLEs
         for.  If NORAD IDs are not provided then data will be fetched
-        for all RSOs in LEO.
+        for all ASOs in LEO.
     :type norad_ids: [str]
 
-    :return: A DataFrame containing the latest TLE data for the requested RSOs
+    :return: A DataFrame containing the latest TLE data for the requested ASOs
     :rtype: pandas.DataFrame
     """
     stc = st.build_space_track_client(space_track_user, space_track_password)
@@ -108,12 +108,12 @@ DEFAULT_TIMESTEP = 600
 def predict_orbits(df, ml_models,
                    n_days=DEFAULT_N_DAYS,
                    timestep=DEFAULT_TIMESTEP):
-    """Use a physical model to predict the future orbits of all RSOs in the
+    """Use a physical model to predict the future orbits of all ASOs in the
     provided DataFrame, then use ML models to predict the error in the physics
     predictions, and finally adjust the physical predictions based on the error
     estimates.
 
-    :param df: The latest TLE data for the RSOs to predict the orbits of
+    :param df: The latest TLE data for the ASOs to predict the orbits of
     :type df: pandas.DataFrame
 
     :param ml_models: The ML models to use to estimate the error for each
@@ -194,7 +194,7 @@ if __name__ == '__main__':
         '--norad_id_file',
         help=('A text file containing a single NORAD ID on each row to fetch '
               'orbit data for. If no file are passed then orbit data for '
-              'all LEO RSOs will be fetched'),
+              'all LEO ASOs will be fetched'),
         type=str
     )
     parser.add_argument(

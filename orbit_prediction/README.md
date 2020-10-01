@@ -38,7 +38,7 @@ from this directory.
 
 ## ETL Orbit Data from USSTRATCOM
 
-We utilize orbit data from [United States Strategic Command](https://en.wikipedia.org/wiki/United_States_Strategic_Command) (USSTRATCOM) via the [space-track.org](https://www.space-track.org/) website and API. In order to access this API, you must register for an account [here](https://www.space-track.org/auth/createAccount). The data is served in the [two-line element set](https://en.wikipedia.org/wiki/Two-line_element_set) format which is a fixed width text format that conatains the [Keplerian orbital elements](https://en.wikipedia.org/wiki/Orbital_elements) of an RSO at a point in time. We then parse the TLE data and calculate the position (**r**) and velocity (**v**) [orbital state vectors](https://en.wikipedia.org/wiki/Orbital_state_vectors).
+We utilize orbit data from [United States Strategic Command](https://en.wikipedia.org/wiki/United_States_Strategic_Command) (USSTRATCOM) via the [space-track.org](https://www.space-track.org/) website and API. In order to access this API, you must register for an account [here](https://www.space-track.org/auth/createAccount). The data is served in the [two-line element set](https://en.wikipedia.org/wiki/Two-line_element_set) format which is a fixed width text format that conatains the [Keplerian orbital elements](https://en.wikipedia.org/wiki/Orbital_elements) of an anthropogenic space object (ASO) at a point in time. We then parse the TLE data and calculate the position (**r**) and velocity (**v**) [orbital state vectors](https://en.wikipedia.org/wiki/Orbital_state_vectors).
 
 
 ### ETL CLI
@@ -47,9 +47,9 @@ The [ETL module](orbit_prediction/spacetrack_etl.py) provides a CLI with the fol
 
 -   `--st_user`: The username for space-track.org
 -   `--st_password`: The password for space-track.org
--   `--norad_id_file`: The path to a text file containing a single NORAD ID on each row to fetch orbit data for. If no file is passed then orbit data for all LEO RSOs will be fetched.
--   `--past_n_days`: The number of days into the past to fetch orbit data for each RSO, defaults to 30 days.
--   `--only_latest`: A boolean flag to only fetch the latest TLE for each RSO.
+-   `--norad_id_file`: The path to a text file containing a single NORAD ID on each row to fetch orbit data for. If no file is passed then orbit data for all LEO ASOs will be fetched.
+-   `--past_n_days`: The number of days into the past to fetch orbit data for each ASO, defaults to 30 days.
+-   `--only_latest`: A boolean flag to only fetch the latest TLE for each ASO.
 -   `--output_path`: The path to save the orbit data parquet file to.
 
 
@@ -65,7 +65,7 @@ python orbit_prediction/spacetrack_etl.py --st_user <SPACE TRAC USERNAME> \
        --output_path <OUTPUT>
 ```
 
-will retrieve orbit data from the past 10 days only for the RSOs with the NORAD IDs listed in [this file](sample_data/test_norad_ids.txt).
+will retrieve orbit data from the past 10 days only for the ASOs with the NORAD IDs listed in [this file](sample_data/test_norad_ids.txt).
 
 Running
 
@@ -76,7 +76,7 @@ python orbit_prediction/spacetrack_etl.py --st_user <SPACE TRAC USERNAME> \
        --output_path <OUTPUT>
 ```
 
-will fetch just the last TLE for every RSO in LEO.
+will fetch just the last TLE for every ASO in LEO.
 
 
 ### Note on API Rate Limits
@@ -88,25 +88,25 @@ The USSTRATCOM API is throttled and the amount of data that can be in the respon
 
 The result of running the ETL script is a a [pandas](https://pandas.pydata.org) [DataFrame](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html) that is saved in the [Parquet](https://parquet.apache.org) format with the following columns:
 
-| Field                 | Description                                         | Type     |
-|--------------------- |--------------------------------------------------- |-------- |
-| rso<sub>id</sub>      | The unique ID for the RSO                           | string   |
-| rso<sub>name</sub>    | The name of the RSO                                 | string   |
-| epoch                 | The timestamp the orbital observation was taken     | datetime |
-| r<sub>x</sub>         | The `x` component of the position vector `r`        | float    |
-| r<sub>y</sub>         | The `y` component of the position vector `r`        | float    |
-| r<sub>z</sub>         | The `z` component of the position vector `r`        | float    |
-| v<sub>x</sub>         | The `x` component of the velocity vector `v`        | float    |
-| v<sub>y</sub>         | The `y` component of the velocity vector `v`        | float    |
-| v<sub>z</sub>         | The `z` component of the velocity vector `v`        | float    |
-| object<sub>type</sub> | Whether the RSO is a paylod, rocket body, or debris | string   |
+| Field       | Description                                         | Type     |
+|-------------|-----------------------------------------------------|----------|
+| aso_id      | The unique ID for the ASO                           | string   |
+| aso_name    | The name of the ASO                                 | string   |
+| epoch       | The timestamp the orbital observation was taken     | datetime |
+| r_x         | The `x` component of the position vector `r`        | float    |
+| r_y         | The `y` component of the position vector `r`        | float    |
+| r_z         | The `z` component of the position vector `r`        | float    |
+| v_x         | The `x` component of the velocity vector `v`        | float    |
+| v_y         | The `y` component of the velocity vector `v`        | float    |
+| v_z         | The `z` component of the velocity vector `v`        | float    |
+| object_type | Whether the ASO is a paylod, rocket body, or debris | string   |
 
 
 ## Physical Model Orbit Prediction
 
-The [physics model module](orbit_prediction/physics_model.py) uses the [poliastro](https://docs.poliastro.space/en/stable/) astrodynamics library to build a training data set of the predictions and errors made by a physical model so that we can possibly train machine learning models to estimate this prediction error. The baseline physics model is a [two body model](https://en.wikipedia.org/wiki/Two-body_problem) that uses [Cowell's formulation](https://en.wikipedia.org/wiki/Perturbation_(astronomy)#Cowell.27s_formulation) for modeling the perturbation in a RSO's orbit caused by the Earth. We build our training set by:
+The [physics model module](orbit_prediction/physics_model.py) uses the [poliastro](https://docs.poliastro.space/en/stable/) astrodynamics library to build a training data set of the predictions and errors made by a physical model so that we can possibly train machine learning models to estimate this prediction error. The baseline physics model is a [two body model](https://en.wikipedia.org/wiki/Two-body_problem) that uses [Cowell's formulation](https://en.wikipedia.org/wiki/Perturbation_(astronomy)#Cowell.27s_formulation) for modeling the perturbation in a ASO's orbit caused by the Earth. We build our training set by:
 
-1.  Given an orbit data point for an RSO, we find all the orbit data points for that RSO that are within `n` days after the given data point.
+1.  Given an orbit data point for an ASO, we find all the orbit data points for that ASO that are within `n` days after the given data point.
 2.  We then create a physics model starting at the at the given orbit data point and propagate the orbit to all the data points that are within `n` days in the future.
 3.  We use the orbit data points as ground truth to determine the error in the physical model's propagation.
 
@@ -125,32 +125,32 @@ The CLI to create a training data set has the following arguments:
 
 The result of running the training data creation script has the following columns:
 
-| Field                                          | Description                                                      | Type     |
-|---------------------------------------------- |---------------------------------------------------------------- |-------- |
-| rso<sub>id</sub>                               | The unique ID for the RSO                                        | string   |
-| rso<sub>name</sub>                             | The name of the RSO                                              | string   |
-| epoch                                          | The timestamp the orbital observation was taken                  | datetime |
-| r<sub>x</sub>                                  | The `x` component of the position vector `r`                     | float    |
-| r<sub>y</sub>                                  | The `y` component of the position vector `r`                     | float    |
-| r<sub>z</sub>                                  | The `z` component of the position vector `r`                     | float    |
-| v<sub>x</sub>                                  | The `x` component of the velocity vector `v`                     | float    |
-| v<sub>y</sub>                                  | The `y` component of the velocity vector `v`                     | float    |
-| v<sub>z</sub>                                  | The `z` component of the velocity vector `v`                     | float    |
-| object<sub>type</sub>                          | Whether the RSO is a paylod, rocket body, or debris              | string   |
-| start<sub>epoch</sub>                          | The `epoch` when the prediction was started                      | datetime |
-| elapsed<sub>seconds</sub>                      | The number of seconds between the `start_epoch` and `epoch`      | float    |
-| physcis<sub>pred</sub><sub>r</sub><sub>x</sub> | The `x` component of the predicted position vector `r`           | float    |
-| physcis<sub>pred</sub><sub>r</sub><sub>y</sub> | The `y` component of the predicted position vector `r`           | float    |
-| physcis<sub>pred</sub><sub>r</sub><sub>z</sub> | The `z` component of the predicted position vector `r`           | float    |
-| physcis<sub>pred</sub><sub>v</sub><sub>x</sub> | The `x` component of the predicted velocity vector `v`           | float    |
-| physcis<sub>pred</sub><sub>v</sub><sub>y</sub> | The `y` component of the predicted velocity vector `v`           | float    |
-| physcis<sub>pred</sub><sub>v</sub><sub>z</sub> | The `z` component of the predicted velocity vector `v`           | float    |
-| physics<sub>err</sub><sub>r</sub><sub>x</sub>  | The prediction error in the `x` component of the position vector | float    |
-| physics<sub>err</sub><sub>r</sub><sub>y</sub>  | The prediction error in the `y` component of the position vector | float    |
-| physics<sub>err</sub><sub>r</sub><sub>z</sub>  | The prediction error in the `z` component of the position vector | float    |
-| physics<sub>err</sub><sub>v</sub><sub>x</sub>  | The prediction error in the `x` component of the velocity vector | float    |
-| physics<sub>err</sub><sub>v</sub><sub>y</sub>  | The prediction error in the `y` component of the velocity vector | float    |
-| physics<sub>err</sub><sub>v</sub><sub>z</sub>  | The prediction error in the `z` component of the velocity vector | float    |
+| Field            | Description                                                      | Type     |
+|------------------|------------------------------------------------------------------|----------|
+| aso_id           | The unique ID for the ASO                                        | string   |
+| aso_name         | The name of the ASO                                              | string   |
+| epoch            | The timestamp the orbital observation was taken                  | datetime |
+| r_x              | The `x` component of the position vector `r`                     | float    |
+| r_y              | The `y` component of the position vector `r`                     | float    |
+| r_z              | The `z` component of the position vector `r`                     | float    |
+| v_x              | The `x` component of the velocity vector `v`                     | float    |
+| v_y              | The `y` component of the velocity vector `v`                     | float    |
+| v_z              | The `z` component of the velocity vector `v`                     | float    |
+| object_type      | Whether the ASO is a paylod, rocket body, or debris              | string   |
+| start_epoch      | The `epoch` when the prediction was started                      | datetime |
+| elapsed_seconds  | The number of seconds between the `start_epoch` and `epoch`      | float    |
+| physcis_pred_r_x | The `x` component of the predicted position vector `r`           | float    |
+| physcis_pred_r_y | The `y` component of the predicted position vector `r`           | float    |
+| physcis_pred_r_z | The `z` component of the predicted position vector `r`           | float    |
+| physcis_pred_v_x | The `x` component of the predicted velocity vector `v`           | float    |
+| physcis_pred_v_y | The `y` component of the predicted velocity vector `v`           | float    |
+| physcis_pred_v_z | The `z` component of the predicted velocity vector `v`           | float    |
+| physics_err_r_x  | The prediction error in the `x` component of the position vector | float    |
+| physics_err_r_y  | The prediction error in the `y` component of the position vector | float    |
+| physics_err_r_z  | The prediction error in the `z` component of the position vector | float    |
+| physics_err_v_x  | The prediction error in the `x` component of the velocity vector | float    |
+| physics_err_v_y  | The prediction error in the `y` component of the velocity vector | float    |
+| physics_err_v_z  | The prediction error in the `z` component of the velocity vector | float    |
 
 
 ## Training Machine Learning Models
@@ -207,8 +207,8 @@ Finally we combine the physical orbit model and the machine learning models by a
 
 The [orbit prediction module](orbit_prediction/pred_orbits.py) has a CLI to:
 
-1.  Fetch the most up to date orbit data for LEO RSOs from USSTRATCOM.
-2.  Use a physical model to predict the future RSO orbits.
+1.  Fetch the most up to date orbit data for LEO ASOs from USSTRATCOM.
+2.  Use a physical model to predict the future ASO orbits.
 3.  Correct the physical model predictions using the errors predicted by the ML models.
 
 The CLI can be run via
@@ -221,7 +221,7 @@ with the following arguments:
 
 -   `--st_user`: The username for space-track.org
 -   `--st_password`: The password for space-track.org
--   `--norad_id_file`: The path to a text file containing a single NORAD ID on each row to fetch orbit data for. If no file is passed then orbit data for all LEO RSOs will be fetched.
+-   `--norad_id_file`: The path to a text file containing a single NORAD ID on each row to fetch orbit data for. If no file is passed then orbit data for all LEO ASOs will be fetched.
 -   `--ml_model_dir`: The path to the directory containing the error prediction models serialized as JSON.
 -   `--n_days`: The number of days in the future to make orbit predictions for, defaults to 3.
 -   `--timestep`: The frequency in seconds to make orbit predictions for, defaults 600
@@ -230,7 +230,7 @@ with the following arguments:
 
 # Pipeline Demo
 
-Running the [pipeline demo script](pipeline_demo.sh) will run the whole orbital prediction pipeline for the RSOs listed in [this file](sample_data/test_norad_ids.txt). First we need to set the needed environment variables
+Running the [pipeline demo script](pipeline_demo.sh) will run the whole orbital prediction pipeline for the ASOs listed in [this file](sample_data/test_norad_ids.txt). First we need to set the needed environment variables
 
 ```shell
 export ST_USER=<SPACE TRACK USERNAME>

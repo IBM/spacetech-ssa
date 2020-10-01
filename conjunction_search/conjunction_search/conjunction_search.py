@@ -24,46 +24,46 @@ def get_orbit_preds(df):
     :type df: pandas.DataFrame
 
     :return: The orbtial prediction arrays as a numpy array of shape
-             (<num_rsos>, <num_prediction_timesteps>, 3)
+             (<num_asos>, <num_prediction_timesteps>, 3)
     :rtype: numpy.array
     """
     orbit_preds = np.stack(df.orbit_preds.values)
     return orbit_preds
 
 
-def get_rso_idx_from_id(df, rso_id):
-    """Converts an RSO UUID to the corresponding array index
+def get_aso_idx_from_id(df, aso_id):
+    """Converts an ASO UUID to the corresponding array index
     in the orbital prediction numpy array
 
     :param df: The orbital prediction DataFrame
     :type df: pandas.DataFrame
 
-    :param rso_id: The UUID of the RSO found in the `rso_id`
+    :param aso_id: The UUID of the ASO found in the `aso_id`
                    column of the provided `df` DataFrame
-    :type rso_id: str
+    :type aso_id: str
 
     :return: The corresponding index in the orbital prediction
              numpy array constructed by `get_orbit_preds`
     :rtype: int
     """
-    return df.index[df.rso_id == rso_id][0]
+    return df.index[df.aso_id == aso_id][0]
 
 
-def get_rso_id_from_idx(df, rso_idx):
+def get_aso_id_from_idx(df, aso_idx):
     """Converts an index in the orbital prediction numpy array into the
-    UUID for the RSO used in the `rso_id` column of the provided
+    UUID for the ASO used in the `aso_id` column of the provided
     `df` DataFrame
 
     :param df: The orbital prediction DataFrame
     :type df: pandas.DataFrame
 
-    :param rso_idx: The index in the numpy array to lookup the UUID for
-    :type rso_idx: int
+    :param aso_idx: The index in the numpy array to lookup the UUID for
+    :type aso_idx: int
 
-    :return: The corresponing RSO UUID string for the given numpy index
+    :return: The corresponing ASO UUID string for the given numpy index
     :rtype: str
     """
-    return df.iloc[rso_idx].rso_id
+    return df.iloc[aso_idx].aso_id
 
 
 def build_kd_forest(df, leaf_size=700):
@@ -88,15 +88,15 @@ def build_kd_forest(df, leaf_size=700):
     return kd_forest
 
 
-def _get_nn_for_timestamp(kd_tree, X, timestep, rso_idx, k, radius):
-    """Returns the nearest RSOs to the provided `rso_idx` RSO.  If a `radius` is
-    provided then the results are all the RSOs within that given radius, otherwise
-    the results are the `k` nearest RSOs
+def _get_nn_for_timestamp(kd_tree, X, timestep, aso_idx, k, radius):
+    """Returns the nearest ASOs to the provided `aso_idx` ASO.  If a `radius` is
+    provided then the results are all the ASOs within that given radius, otherwise
+    the results are the `k` nearest ASOs
 
     :param kd_tree: The KD-tree build for the prediction timestep
     :type kd_tree: sklearn.neighbors.KDTree
 
-    :param X: The numpy array of orbital predictions for each RSO for the
+    :param X: The numpy array of orbital predictions for each ASO for the
               prediction timestep
     :type X: numpy.array
 
@@ -104,22 +104,22 @@ def _get_nn_for_timestamp(kd_tree, X, timestep, rso_idx, k, radius):
                      represents
     :type timestep: int
 
-    :param rso_idx: The index in `X` of the RSO to find nearest RSOs for
-    :type rso_idx: int
+    :param aso_idx: The index in `X` of the ASO to find nearest ASOs for
+    :type aso_idx: int
 
-    :param k: The number of nearest RSOs to return. Not used if `radius` is passed
+    :param k: The number of nearest ASOs to return. Not used if `radius` is passed
     :type k: int
 
-    :param radius: The radius, in meters, to use in determining what is a near RSO
+    :param radius: The radius, in meters, to use in determining what is a near ASO
     :type radius: float
 
-    :return: A list of tuples representing all RSOs that match the provided query
-             where the first value is the index in `X` of the matching RSO, the
+    :return: A list of tuples representing all ASOs that match the provided query
+             where the first value is the index in `X` of the matching ASO, the
              second value is the timestep where this match occurred, and the third
-             value is the distance from the query RSO to the matching RSO.
+             value is the distance from the query ASO to the matching ASO.
     :rtype: [(int, int, float)]
     """
-    query_point = X[rso_idx].reshape(1, -1)
+    query_point = X[aso_idx].reshape(1, -1)
     if radius:
         result_idxs, dists = kd_tree.query_radius(query_point,
                                                   r=radius,
@@ -137,42 +137,42 @@ def _get_nn_for_timestamp(kd_tree, X, timestep, rso_idx, k, radius):
         # Remove query object from results
         result = [(int(i), int(timestep), float(d))
                   for i, d in idx_dists
-                  if i != rso_idx]
+                  if i != aso_idx]
     return result
 
 
-def get_nns_for_object(df, kd_forest, rso_id, k=1, radius=None):
-    """Returns the nearest RSOs over all prediction timesteps.
+def get_nns_for_object(df, kd_forest, aso_id, k=1, radius=None):
+    """Returns the nearest ASOs over all prediction timesteps.
 
     :param df: The orbital prediction DataFrame
     :type df: pandas.DataFrame
 
     :param kd_forest: The data and KD-trees for each orbital prediction timestep
-                      to use to find nearest RSOs.
+                      to use to find nearest ASOs.
     :type kd_forest: [(numpy.array, sklearn.neighbors.KDTree)]
 
-    :param rso_idx: The index in `X` of the RSO to find nearest RSOs for
-    :type rso_idx: int
+    :param aso_idx: The index in `X` of the ASO to find nearest ASOs for
+    :type aso_idx: int
 
-    :param k: The number of nearest RSOs to return. Not used if `radius` is passed
+    :param k: The number of nearest ASOs to return. Not used if `radius` is passed
     :type k: int
 
-    :param radius: The radius, in meters, to use in determining what is a near RSO
+    :param radius: The radius, in meters, to use in determining what is a near ASO
     :type radius: float
 
-    :return: A list of tuples representing all RSOs that match the provided query
-             where the first value is the index in `X` of the matching RSO, the
+    :return: A list of tuples representing all ASOs that match the provided query
+             where the first value is the index in `X` of the matching ASO, the
              second value is the timestep where this match occurred, and the third
-             value is the distance from the query RSO to the matching RSO.
+             value is the distance from the query ASO to the matching ASO.
     :rtype: [(int, int, float)]
     """
-    rso_idx = get_rso_idx_from_id(df, rso_id)
+    aso_idx = get_aso_idx_from_id(df, aso_id)
     results = []
     for timestep, (X, kd_tree) in enumerate(kd_forest):
-        result = _get_nn_for_timestamp(kd_tree, X, timestep, rso_idx, k, radius)
+        result = _get_nn_for_timestamp(kd_tree, X, timestep, aso_idx, k, radius)
         results += result
     results.sort(key=lambda x: x[2])
     if radius is None:
         results = results[:k]
-    results = [(get_rso_id_from_idx(df, i), ts, d) for i, ts, d in results]
+    results = [(get_aso_id_from_idx(df, i), ts, d) for i, ts, d in results]
     return results
