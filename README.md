@@ -31,6 +31,9 @@ The [conjunction search component](conjunction_search/README.md) combs through f
 
 The SSA solution demo can be accessed at https://spaceorbits.net/
 
+## Contributing
+
+We very much encourage anyone and everyone to join and contribute to this project.  Please see the [contributing file](CONTRIBUTING.md) for more details.
 
 ## License
 
