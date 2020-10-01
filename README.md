@@ -1,4 +1,4 @@
-# Introduction
+# Space Situational Awareness in Low Earth Orbit
 
 [Low earth orbit](https://en.wikipedia.org/wiki/Low_Earth_orbit) (LEO) is a crowded place and the number of anthropogenic space objects (ASOs) entering LEO is rapidly escalating. With this population boom also comes the inevitable increase in close encounters (conjunctions) between objects. The heart of the space situational awareness (SSA) problem is to predict where ASOs are and where they are going; everything from a spec of paint to the International Space Station.
 
@@ -13,25 +13,25 @@ This project aims to be an experimental lab and playground for using ML to impro
 -   Visualize when and where conjunctions may occur.
 
 
-# Components
+## Components
 
 The SSA solution is currently composed of two components.
 
 
-## Orbit Prediction
+### Orbit Prediction
 
 The [orbital prediction component](orbit_prediction/README.md) combines physics and machine learning models to predict the future path of ASOs.
 
 
-## Conjunction search
+### Conjunction search
 
 The [conjunction search component](conjunction_search/README.md) combs through future orbit predictions to determine when and where two ASOs may come close to each other based on user provided search parameters.
 
-# Live Demo
+## Live Demo
 
 The SSA solution demo can be accessed at https://spaceorbits.net/
 
 
-# License
+## License
 
 The IBM Space Situational Awareness solution is licensed under the Apache 2.0 license. Full license text is available at [LICENSE](LICENSE).
