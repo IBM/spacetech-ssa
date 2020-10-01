@@ -1,6 +1,6 @@
 ## Space Situational Awareness in Low Earth Orbit
-![ASOs in LEO](images/leo_objects.png)
-*Objects in LEO ([Image Source](https://astriagraph.spacetech-ibm.com))*
+![ISS](images/iss.jpg)
+*International Space Station ([Image Source](https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/International_Space_Station_after_undocking_of_STS-132.jpg/2880px-International_Space_Station_after_undocking_of_STS-132.jpg)*
 
 [Low earth orbit](https://en.wikipedia.org/wiki/Low_Earth_orbit) (LEO) is a crowded place and the number of anthropogenic space objects (ASOs) entering LEO is rapidly escalating. With this population boom also comes the inevitable increase in close encounters (conjunctions) between objects. The heart of the space situational awareness (SSA) problem is to predict where ASOs are and where they are going; everything from a spec of paint to the International Space Station.
 
