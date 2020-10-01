@@ -122,7 +122,7 @@ def predict_orbit(window):
     """Predict the state vectors of each future timestep in the given `window`
     using a physics astrodynamics model.
 
-    :param window: The window of timesteps to predict the orbit of the RSO for
+    :param window: The window of timesteps to predict the orbit of the ASO for
     :type window: pandas.DataFrame
 
     :return: The original timestep rows with the predicted state vectors added
@@ -162,7 +162,7 @@ DEFAULT_N_PRED_DAYS = 3
 def predict_orbits(df,
                    last_n_days=DEFAULT_LAST_N_DAYS,
                    n_pred_days=DEFAULT_N_PRED_DAYS):
-    """Use a physics astrodynamics model to predict the orbits of the RSOs
+    """Use a physics astrodynamics model to predict the orbits of the ASOs
     in the provided DataFrame.
 
     :param df: The DataFrame containing the observed orbital state vectors
@@ -183,8 +183,8 @@ def predict_orbits(df,
     epoch_df = df.sort_values('epoch', ascending=False).set_index('epoch')
     pred_window_length = f'{n_pred_days}d'
     # For each row in `df` we create a window of all of the observations for
-    # that RSO that are within `n_pred_days` of the given row
-    window_cols = ['rso_id', pd.Grouper(freq=pred_window_length)]
+    # that ASO that are within `n_pred_days` of the given row
+    window_cols = ['aso_id', pd.Grouper(freq=pred_window_length)]
     windows = [w[1] for w in epoch_df.groupby(window_cols)]
     # Predict the orbits in each window in parallel
     window_dfs = Parallel(n_jobs=-1)(delayed(predict_orbit)(w) for w in tqdm(windows))

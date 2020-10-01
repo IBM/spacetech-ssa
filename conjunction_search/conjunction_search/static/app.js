@@ -31,8 +31,8 @@ function hideShow(hideDivId, showDivId) {
 function showOrbits() {
     viewer.dataSources.removeAll();
     var CZMLURL = "/conjunction_search/";
-    var rsoId = document.getElementById("rsoSelect").value;
-    CZMLURL += rsoId;
+    var asoId = document.getElementById("asoSelect").value;
+    CZMLURL += asoId;
     CZMLURL += "?";
     if (document.getElementById("knnSearch").checked) {
         var kNNs = document.getElementById("numKNNs").value;

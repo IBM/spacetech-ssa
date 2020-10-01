@@ -22,7 +22,7 @@ class CZMLBuilder:
     search.
 
     :param czml_df: A pandas DataFrame containing the orbit predictions
-                    and related data for the RSOs that matched the
+                    and related data for the ASOs that matched the
                     conjunction search query.
     :type czml_df: pandas.DataFrame
     """
@@ -65,23 +65,23 @@ class CZMLBuilder:
 
     def _build_conj_descs(self):
         """Creates a human readable DataFrame for describing
-        the conjunctions between the query RSO and the search matching
-        RSOs.
+        the conjunctions between the query ASO and the search matching
+        ASOs.
         """
         conj_descs = []
-        cols = ['rso_id',
-                'RSO',
+        cols = ['aso_id',
+                'ASO',
                 'Conjunction Window Start',
                 'Predicted Conjunction Distance (m)']
         dist_col = cols[-1]
         pretty_ts_fmt = "%H:%M %m/%d/%y"
         for _, row in self.czml_df.iterrows():
-            if row.rso_id == self.query_row.rso_id:
+            if row.aso_id == self.query_row.aso_id:
                 continue
             conj_spans = [self._get_conj_span(ts, pretty_ts_fmt)
                           for ts in row.conj_timesteps]
             for d, (st, et) in zip(row.conj_dists, conj_spans):
-                conj_desc = (row.rso_id, row.rso_name, st, int(d))
+                conj_desc = (row.aso_id, row.aso_name, st, int(d))
                 conj_descs.append(conj_desc)
         conj_descs_df = pd.DataFrame(conj_descs, columns=cols)
         conj_descs_df.sort_values(by=dist_col,
@@ -140,7 +140,7 @@ class CZMLBuilder:
 
     def _get_line_intervals(self, conj_spans):
         """Calculates the intervals for showing conjunction lines
-        between RSOs in the Cesium UI
+        between ASOs in the Cesium UI
 
         :param conj_spans: A list of start and end timestamps for
                            when the conjunctions occur
@@ -178,11 +178,11 @@ class CZMLBuilder:
         return intervals
 
     def _build_conj_node(self, row):
-        """Builds a node to display a line connecting the two RSOs
+        """Builds a node to display a line connecting the two ASOs
         when the predicted conjunction will occur.
 
         :param row: The row from the orbital prediction DataFrame representing
-                    the RSO.
+                    the ASO.
         :type rows: pandas.Series
 
         :return: A dictionary representing the CZML conjunction  node
@@ -190,8 +190,8 @@ class CZMLBuilder:
         """
         conj_spans = [self._get_conj_span(ts) for ts in row.conj_timesteps]
         conj_node = {
-            'id': f'conj_{row.rso_id}_to_{self.query_row.rso_id}',
-            'name': f'{row.rso_name} to {self.query_row.rso_name}',
+            'id': f'conj_{row.aso_id}_to_{self.query_row.aso_id}',
+            'name': f'{row.aso_name} to {self.query_row.aso_name}',
             'parent': 'conjunction_connections',
             'availability': [f'{st}/{et}' for (st, et) in conj_spans],
             'polyline': {
@@ -206,8 +206,8 @@ class CZMLBuilder:
                 },
                 'arcType':'NONE',
                 'positions':{
-                    'references':[f'{row.rso_id}#position',
-                                  f'{self.query_row.rso_id}#position']
+                    'references':[f'{row.aso_id}#position',
+                                  f'{self.query_row.aso_id}#position']
                 }
             }
 
@@ -216,44 +216,44 @@ class CZMLBuilder:
 
     def _get_conj_desc(self, row):
         """Builds an HTML table of every conjunction search
-        match the given row has with the query RSO.
+        match the given row has with the query ASO.
 
         :param row: The row from the orbital prediction DataFrame representing
-                    the RSO.
+                    the ASO.
         :type rows: pandas.Series
 
         :return: HTML table of conjunction search results
         :rtype: str
         """
-        if row.rso_id == self.query_row.rso_id:
+        if row.aso_id == self.query_row.aso_id:
             desc_df = self.conj_descs
         else:
-            desc_df = self.conj_descs[self.conj_descs.rso_id == row.rso_id]
-        return desc_df.drop(columns=['rso_id']).to_html(index=False,
+            desc_df = self.conj_descs[self.conj_descs.aso_id == row.aso_id]
+        return desc_df.drop(columns=['aso_id']).to_html(index=False,
                                                         justify='center')
 
-    def _build_rso_pred_node(self, row):
-        """Builds a node representing the predicted orbit of a single RSO
+    def _build_aso_pred_node(self, row):
+        """Builds a node representing the predicted orbit of a single ASO
 
         :param row: The row from the orbital prediction DataFrame representing
-                    the RSO.
+                    the ASO.
         :type rows: pandas.Series
 
-        :return: A dictionary representing the CZML RSO node
+        :return: A dictionary representing the CZML ASO node
         :rtype: dict
         """
         orbit_pred_intervals = []
         for idx, op in enumerate(row.orbit_preds.tolist()):
             op_interval = [idx*self.pred_interval] + op[:3]
             orbit_pred_intervals += op_interval
-        if row.rso_id == self.query_row.rso_id:
+        if row.aso_id == self.query_row.aso_id:
             path_color = [63, 191, 63, 255]
         else:
             path_color = [127, 63, 191, 255]
 
-        rso_node = {
-            'id': row.rso_id,
-            'name': row.rso_name,
+        aso_node = {
+            'id': row.aso_id,
+            'name': row.aso_name,
             'availability': self.pred_span,
             'description': self._get_conj_desc(row),
             'billboard': {
@@ -284,7 +284,7 @@ class CZMLBuilder:
                 },
                 'show': True,
                 'style': 'FILL_AND_OUTLINE',
-                'text': row.rso_name,
+                'text': row.aso_name,
                 'verticalOrigin': 'CENTER'
             },
             'path': {
@@ -315,10 +315,10 @@ class CZMLBuilder:
             }
         }
 
-        return rso_node
+        return aso_node
 
     def build_czml_doc(self, outfile=None):
-        """Builds a CZML document describing the orbits of all of the RSOs
+        """Builds a CZML document describing the orbits of all of the ASOs
         that matched the conjunction search query.
 
         :param outfile: Optional file path to save the CZML document to
@@ -336,22 +336,22 @@ class CZMLBuilder:
             'name': 'Conjunctions'
         }
         conj_nodes = [conj_root_node]
-        rso_nodes = []
+        aso_nodes = []
 
         for _, row in self.czml_df.iterrows():
             # Only build conjunction nodes if the row
-            # is not the conjunction search query RSO
-            if row.rso_id != self.query_row.rso_id:
+            # is not the conjunction search query ASO
+            if row.aso_id != self.query_row.aso_id:
                 conj_node = self._build_conj_node(row)
                 conj_nodes.append(conj_node)
-            rso_node = self._build_rso_pred_node(row)
-            rso_nodes.append(rso_node)
+            aso_node = self._build_aso_pred_node(row)
+            aso_nodes.append(aso_node)
 
         # Only add the conjunction root node if
         # there are conjunction search results
         if len(conj_nodes) > 1:
             czml_doc += conj_nodes
-        czml_doc += rso_nodes
+        czml_doc += aso_nodes
 
         if outfile:
             with open(outfile, 'w') as czml_file:

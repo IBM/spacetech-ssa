@@ -28,8 +28,8 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 
-def get_leo_rso_catalog(stc, norad_ids=None):
-    """Retrieves entries from the Space Track Satellite Catalog for all RSOs
+def get_leo_aso_catalog(stc, norad_ids=None):
+    """Retrieves entries from the Space Track Satellite Catalog for all ASOs
     that are in low Earth orbit.
 
     :param stc: The Space Track API client
@@ -37,10 +37,10 @@ def get_leo_rso_catalog(stc, norad_ids=None):
 
     :param norad_ids: An optional list of NORAD IDs to fetch the TLEs
         for.  If NORAD IDs are not provided then data will be fetched
-        for all RSOs in LEO.
+        for all ASOs in LEO.
     :type norad_ids: [str]
 
-    :return: The catalog entries for LEO RSOs
+    :return: The catalog entries for LEO ASOs
     :rtype: pandas.DataFrame
     """
     query_params = {
@@ -51,27 +51,27 @@ def get_leo_rso_catalog(stc, norad_ids=None):
         query_params['norad_cat_id'] = norad_ids
     else:
         query_params['period']  = op.less_than(128),
-    leo_rsos = stc.satcat(**query_params)
-    return pd.DataFrame(leo_rsos)
+    leo_asos = stc.satcat(**query_params)
+    return pd.DataFrame(leo_asos)
 
 
-def get_object_types(rso_df):
+def get_object_types(aso_df):
     """Normalizes the object type and NORAD ID columns from the Space Track
     Satellite Catalog DataFrame.  This will be used to add the object type
     to the TLE data.
 
-    :param rso_df: The DataFrame composed of entries from the Space Track
+    :param aso_df: The DataFrame composed of entries from the Space Track
         Satellite Catalog
-    :type rso_df: pandas.DataFrame
+    :type aso_df: pandas.DataFrame
 
-    :return: A pandas DataFrame containing the RSO's ID and normalized
+    :return: A pandas DataFrame containing the ASO's ID and normalized
         object type
     :rtype: pandas.DataFrame
     """
     cols = ['NORAD_CAT_ID', 'OBJECT_TYPE']
-    col_mapper = {'NORAD_CAT_ID': 'rso_id', 'OBJECT_TYPE': 'object_type'}
+    col_mapper = {'NORAD_CAT_ID': 'aso_id', 'OBJECT_TYPE': 'object_type'}
     # Standardize the column names
-    object_types = rso_df[cols].rename(columns=col_mapper)
+    object_types = aso_df[cols].rename(columns=col_mapper)
     # Lowercase the object type strings and replace spaces with underscores
     norm_func = lambda s: s.lower().replace(' ', '_')
     object_types['object_type'] = object_types.object_type.apply(norm_func)
@@ -79,23 +79,23 @@ def get_object_types(rso_df):
 
 
 def get_leo_tles_str(stc, norad_ids, past_n_days, only_latest):
-    """Uses the Space Track TLE API to get all the TLEs for the RSOs specified
+    """Uses the Space Track TLE API to get all the TLEs for the ASOs specified
     by the `norad_ids` for the specified time period.
 
     :param stc: The Space Track API client
     :type stc: spacetrack.SpaceTrackClient
 
-    :param norad_ids: The NORAD IDs of the RSOs to get the TLEs for
+    :param norad_ids: The NORAD IDs of the ASOs to get the TLEs for
     :type norad_ids: [str]
 
     :param past_n_days: The number of past days to get TLEs for
     :type past_n_days: int
 
     :param only_latest: Whether or not to only fetch the latest TLE for
-        each RSO
+        each ASO
     :type only_latest: bool
 
-    :return: The three line elements for each specified RSO
+    :return: The three line elements for each specified ASO
     :rtype: str
     """
     query_params = {
@@ -134,7 +134,7 @@ def get_tles(raw_tle_str):
     return tles
 
 
-def get_rso_data(tles):
+def get_aso_data(tles):
     """Extracts the necessary data from the TLE objects
     for doing orbital prediction.
 
@@ -146,10 +146,10 @@ def get_rso_data(tles):
     """
     tles_data = []
     for tle in tles:
-        rso_data = {}
-        rso_data['rso_name'] = tle.name
-        rso_data['rso_id'] = tle.norad
-        rso_data['epoch'] = tle.epoch.to_datetime()
+        aso_data = {}
+        aso_data['aso_name'] = tle.name
+        aso_data['aso_id'] = tle.norad
+        aso_data['epoch'] = tle.epoch.to_datetime()
         # Convert the TLE object to a poliastro.twobody.Orbit instance
         orbit = tle.to_orbit()
         # Calculate the position and velocity vectors
@@ -159,9 +159,9 @@ def get_rso_data(tles):
         # Convert the velocity vector from km/s to m/s
         v_ms = v.to(u.m/u.s).to_value()
         # Extract the components of the state vectiors
-        rso_data['r_x'], rso_data['r_y'], rso_data['r_z'] = r_m
-        rso_data['v_x'], rso_data['v_y'], rso_data['v_z'] = v_ms
-        tles_data.append(rso_data)
+        aso_data['r_x'], aso_data['r_y'], aso_data['r_z'] = r_m
+        aso_data['v_x'], aso_data['v_y'], aso_data['v_z'] = v_ms
+        tles_data.append(aso_data)
     return pd.DataFrame(tles_data)
 
 
@@ -169,7 +169,7 @@ DEFAULT_PAST_N_DAYS = 30
 
 def build_leo_df(stc, norad_ids=None, past_n_days=DEFAULT_PAST_N_DAYS,
                  only_latest=False):
-    """Builds a pandas DataFrame of LEO RSO orbit observations from data
+    """Builds a pandas DataFrame of LEO ASO orbit observations from data
     provided by USSTRATCOM via space-track.org
 
     :param stc: The Space Track API client
@@ -177,26 +177,26 @@ def build_leo_df(stc, norad_ids=None, past_n_days=DEFAULT_PAST_N_DAYS,
 
     :param norad_ids: An optional list of NORAD IDs to fetch the TLEs
         for.  If NORAD IDs are not provided then data will be fetched
-        for all RSOs in LEO.
+        for all ASOs in LEO.
     :type norad_ids: [str]
 
     :param past_n_days: The number of past days to get TLEs for
     :type past_n_days: int
 
     :param only_latest: Whether or not to only fetch the latest TLE for
-        each RSO
+        each ASO
     :type only_latest: bool
 
-    :return: The Space Track orbit data for LEO RSOs
+    :return: The Space Track orbit data for LEO ASOs
     :rtype: pandas.DataFrame
 
     """
     logger.info('Fetching Satellite Catalog Data...')
-    leo_rsos = get_leo_rso_catalog(stc, norad_ids)
-    norad_ids = leo_rsos['NORAD_CAT_ID']
+    leo_asos = get_leo_aso_catalog(stc, norad_ids)
+    norad_ids = leo_asos['NORAD_CAT_ID']
     # The space-track.org API is rate limited and the response size
     # of the data is capped.  Experimenting found that we can reliably
-    # get successful responses for about 500 RSOs so we break the
+    # get successful responses for about 500 ASOs so we break the
     # NORAD IDs into chunks for processing.
     n_chunks = len(norad_ids) // 500
     if n_chunks > 1:
@@ -210,10 +210,10 @@ def build_leo_df(stc, norad_ids=None, past_n_days=DEFAULT_PAST_N_DAYS,
     logger.info('Starting to fetch TLEs from space-track.org')
     for idx, norad_chunk in enumerate(norad_chunks):
         logger.info(f'Processing batch {idx+1}/{len(norad_chunks)}')
-        logger.info(f'Fetching TLEs for {len(norad_chunk)} RSOs...')
-        rso_ids = norad_chunk.to_list()
+        logger.info(f'Fetching TLEs for {len(norad_chunk)} ASOs...')
+        aso_ids = norad_chunk.to_list()
         chunk_tle_str = get_leo_tles_str(stc,
-                                         rso_ids,
+                                         aso_ids,
                                          past_n_days,
                                          only_latest)
         logger.info('Parsing raw TLE data...')
@@ -221,10 +221,10 @@ def build_leo_df(stc, norad_ids=None, past_n_days=DEFAULT_PAST_N_DAYS,
         leo_tles += chunk_tles
     logger.info('Finished fetching TLEs')
     logger.info(f'Calculating orbital state vectors for {len(leo_tles)} TLEs...')
-    rso_data = get_rso_data(leo_tles)
-    object_types = get_object_types(leo_rsos)
-    rso_data = rso_data.merge(object_types, on='rso_id', how='left')
-    return rso_data
+    aso_data = get_aso_data(leo_tles)
+    object_types = get_object_types(leo_asos)
+    aso_data = aso_data.merge(object_types, on='aso_id', how='left')
+    return aso_data
 
 
 def st_callback(unitl):
@@ -269,19 +269,19 @@ if __name__ == '__main__':
         '--norad_id_file',
         help=('A text file containing a single NORAD ID on each row to fetch '
               'orbit data for. If no file are passed then orbit data for '
-              'all LEO RSOs will be fetched'),
+              'all LEO ASOs will be fetched'),
         type=str
     )
     parser.add_argument(
         '--past_n_days',
         help=('The number of days into the past to fetch orbit data for each '
-              'RSO, defaults to 30 days'),
+              'ASO, defaults to 30 days'),
         default=DEFAULT_PAST_N_DAYS,
         type=int
     )
     parser.add_argument(
         '--only_latest',
-        help='Only fetch the latest TLE for each RSO',
+        help='Only fetch the latest TLE for each ASO',
         action='store_true'
     )
     parser.add_argument(

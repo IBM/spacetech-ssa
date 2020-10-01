@@ -38,7 +38,7 @@ from this directory.
 
 ## ETL Orbit Data from USSTRATCOM
 
-We utilize orbit data from [United States Strategic Command](https://en.wikipedia.org/wiki/United_States_Strategic_Command) (USSTRATCOM) via the [space-track.org](https://www.space-track.org/) website and API. In order to access this API, you must register for an account [here](https://www.space-track.org/auth/createAccount). The data is served in the [two-line element set](https://en.wikipedia.org/wiki/Two-line_element_set) format which is a fixed width text format that conatains the [Keplerian orbital elements](https://en.wikipedia.org/wiki/Orbital_elements) of an ASO at a point in time. We then parse the TLE data and calculate the position (**r**) and velocity (**v**) [orbital state vectors](https://en.wikipedia.org/wiki/Orbital_state_vectors).
+We utilize orbit data from [United States Strategic Command](https://en.wikipedia.org/wiki/United_States_Strategic_Command) (USSTRATCOM) via the [space-track.org](https://www.space-track.org/) website and API. In order to access this API, you must register for an account [here](https://www.space-track.org/auth/createAccount). The data is served in the [two-line element set](https://en.wikipedia.org/wiki/Two-line_element_set) format which is a fixed width text format that conatains the [Keplerian orbital elements](https://en.wikipedia.org/wiki/Orbital_elements) of an anthropogenic space object (ASO) at a point in time. We then parse the TLE data and calculate the position (**r**) and velocity (**v**) [orbital state vectors](https://en.wikipedia.org/wiki/Orbital_state_vectors).
 
 
 ### ETL CLI
@@ -88,11 +88,11 @@ The USSTRATCOM API is throttled and the amount of data that can be in the respon
 
 The result of running the ETL script is a a [pandas](https://pandas.pydata.org) [DataFrame](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html) that is saved in the [Parquet](https://parquet.apache.org) format with the following columns:
 
-| Field                 | Description                                         | Type     |
-|--------------------- |--------------------------------------------------- |-------- |
+| Field       | Description                                         | Type     |
+|-------------|-----------------------------------------------------|----------|
 | aso_id      | The unique ID for the ASO                           | string   |
 | aso_name    | The name of the ASO                                 | string   |
-| epoch                 | The timestamp the orbital observation was taken     | datetime |
+| epoch       | The timestamp the orbital observation was taken     | datetime |
 | r_x         | The `x` component of the position vector `r`        | float    |
 | r_y         | The `y` component of the position vector `r`        | float    |
 | r_z         | The `z` component of the position vector `r`        | float    |
@@ -125,20 +125,20 @@ The CLI to create a training data set has the following arguments:
 
 The result of running the training data creation script has the following columns:
 
-| Field                                          | Description                                                      | Type     |
-|---------------------------------------------- |---------------------------------------------------------------- |-------- |
-| aso_id                               | The unique ID for the ASO                                        | string   |
-| aso_name                             | The name of the ASO                                              | string   |
-| epoch                                          | The timestamp the orbital observation was taken                  | datetime |
-| r_x                                  | The `x` component of the position vector `r`                     | float    |
-| r_y                                  | The `y` component of the position vector `r`                     | float    |
-| r_z                                  | The `z` component of the position vector `r`                     | float    |
-| v_x                                  | The `x` component of the velocity vector `v`                     | float    |
-| v_y                                  | The `y` component of the velocity vector `v`                     | float    |
-| v_z                                  | The `z` component of the velocity vector `v`                     | float    |
-| object_type                          | Whether the ASO is a paylod, rocket body, or debris              | string   |
-| start_epoch                          | The `epoch` when the prediction was started                      | datetime |
-| elapsed_seconds                      | The number of seconds between the `start_epoch` and `epoch`      | float    |
+| Field            | Description                                                      | Type     |
+|------------------|------------------------------------------------------------------|----------|
+| aso_id           | The unique ID for the ASO                                        | string   |
+| aso_name         | The name of the ASO                                              | string   |
+| epoch            | The timestamp the orbital observation was taken                  | datetime |
+| r_x              | The `x` component of the position vector `r`                     | float    |
+| r_y              | The `y` component of the position vector `r`                     | float    |
+| r_z              | The `z` component of the position vector `r`                     | float    |
+| v_x              | The `x` component of the velocity vector `v`                     | float    |
+| v_y              | The `y` component of the velocity vector `v`                     | float    |
+| v_z              | The `z` component of the velocity vector `v`                     | float    |
+| object_type      | Whether the ASO is a paylod, rocket body, or debris              | string   |
+| start_epoch      | The `epoch` when the prediction was started                      | datetime |
+| elapsed_seconds  | The number of seconds between the `start_epoch` and `epoch`      | float    |
 | physcis_pred_r_x | The `x` component of the predicted position vector `r`           | float    |
 | physcis_pred_r_y | The `y` component of the predicted position vector `r`           | float    |
 | physcis_pred_r_z | The `z` component of the predicted position vector `r`           | float    |

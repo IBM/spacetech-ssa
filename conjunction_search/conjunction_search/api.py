@@ -32,7 +32,7 @@ def get_dataframe_from_cos():
     from COS.
 
     :return: The DataFrame containing the orbital predictions for every
-             RSO
+             ASO
     :rtype: pandas.DataFrame
     """
     cos_endpoint = os.environ.get('COS_ENDPOINT')
@@ -67,46 +67,46 @@ def _make_json_resp(conj_results):
     :type conj_results: [(int, int, float)]
 
     :return: A JSON list of the search results where each dictionary
-             contains the UUID of the matching RSO, the distance to
-             the query RSO, and the prediction timestep where the query
+             contains the UUID of the matching ASO, the distance to
+             the query ASO, and the prediction timestep where the query
              matches.
     """
-    keys = ('rso_id', 'timestep', 'distance')
+    keys = ('aso_id', 'timestep', 'distance')
     json_results = [dict(zip(keys, r)) for r in conj_results]
     return jsonify(json_results)
 
 
-def _make_czml_resp(rso_id, conj_results):
+def _make_czml_resp(aso_id, conj_results):
     """Converts the conjunction search results to a CZML
     document to be used to display the orbits of the
-    RSOs in Cesium
+    ASOs in Cesium
 
-    :param rso_id: The ID of the RSO that the conjunction search
+    :param aso_id: The ID of the ASO that the conjunction search
                    query was run for.
-    :type rso_id: str
+    :type aso_id: str
 
     :param conj_results: The conjunction search results
     :type conj_results: [(int, int, float)]
 
     return: A JSON CZML document describing the orbits of the
-            conjunction search RSOs.
+            conjunction search ASOs.
     """
     # Build a pandas DataFrame out of the conjunction search results
     conj_df = pd.DataFrame(data=conj_results,
-                           columns=['rso_id', 'conj_timesteps', 'conj_dists'])
-    # Gather conjunction timesteps and distances by rso_id
-    conj_df = conj_df.pivot_table(index=['rso_id'],
+                           columns=['aso_id', 'conj_timesteps', 'conj_dists'])
+    # Gather conjunction timesteps and distances by aso_id
+    conj_df = conj_df.pivot_table(index=['aso_id'],
                                   aggfunc=lambda x: list(x))
     conj_df.reset_index(inplace=True)
     if conj_df.empty:
         return jsonify([])
-    # Select the query RSO and the conjunction search matches
+    # Select the query ASO and the conjunction search matches
     # from the orbital prediction DataFrame
-    rso_ids = [rso_id] + [r[0] for r in conj_results]
-    rsos_df = orbit_df[orbit_df.rso_id.isin(rso_ids)].reset_index()
+    aso_ids = [aso_id] + [r[0] for r in conj_results]
+    asos_df = orbit_df[orbit_df.aso_id.isin(aso_ids)].reset_index()
     # Join the conjunction search and selected orbital prediction
     # DataFrames into one DataFrame
-    czml_df = rsos_df.merge(conj_df, how='left', on='rso_id')
+    czml_df = asos_df.merge(conj_df, how='left', on='aso_id')
     # Build and return the CZML document
     czml_builder = CZMLBuilder(czml_df)
     czml_doc = czml_builder.build_czml_doc()
@@ -115,28 +115,28 @@ def _make_czml_resp(rso_id, conj_results):
 
 @app.route('/', methods=['GET'])
 def ui():
-    rsos = orbit_df[['rso_name', 'rso_id']].to_dict(orient='records')
+    asos = orbit_df[['aso_name', 'aso_id']].to_dict(orient='records')
     return render_template('index.html',
-                           rsos=rsos,
+                           asos=asos,
                            cesium_api_key=cesium_api_key)
 
 
-@app.route('/conjunction_search/<rso_id>', methods=['GET'])
-def conjunction_search(rso_id):
+@app.route('/conjunction_search/<aso_id>', methods=['GET'])
+def conjunction_search(aso_id):
     """Flask route for querying the KD-trees to find nearest
-    RSOs
+    ASOs
 
-    :param rso_id: The UUID of the RSO to find nearest neighbors
-                   for.  This value should be the UUID in the `rso_id`
+    :param aso_id: The UUID of the ASO to find nearest neighbors
+                   for.  This value should be the UUID in the `aso_id`
                    column of the `orbit_df` DataFrame.
-    :type rso_id: str
+    :type aso_id: str
 
     *Query Parameters*
     :param k: The number of nearest neighbor results to return
     :type k: int
 
     :param radius: Instead of returning the k nearest neighbors,
-                   return all RSOs that are within the given radius
+                   return all ASOs that are within the given radius
                    for each prediction timestep.
     :type radius: float
 
@@ -145,13 +145,13 @@ def conjunction_search(rso_id):
     search_radius = request.args.get('radius', type=float)
     results = get_nns_for_object(orbit_df,
                                  kd_forest,
-                                 rso_id,
+                                 aso_id,
                                  k=k,
                                  radius=search_radius)
     if request.content_type == 'application/json':
         resp = _make_json_resp(results)
     else:
-        resp = _make_czml_resp(rso_id, results)
+        resp = _make_czml_resp(aso_id, results)
     return resp
 
 
