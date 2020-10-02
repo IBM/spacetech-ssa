@@ -31,9 +31,9 @@ python orbit_prediction/pred_physics_err.py --input_path /tmp/ssa_test/physics_p
 
 echo "Predicting Orbits using Physics/ML Hybrid Model..."
 python orbit_prediction/pred_orbits.py --st_user $ST_USER \
-           --st_password $ST_PASSWORD \
-           --ml_model_dir /tmp/ssa_test/err_models \
-           --norad_id_file sample_data/test_norad_ids.txt \
-           --output_path /tmp/ssa_test/orbit_preds.pickle
+       --st_password $ST_PASSWORD \
+       --ml_model_dir /tmp/ssa_test/err_models \
+       --norad_id_file sample_data/test_norad_ids.txt \
+       --output_path /tmp/ssa_test/orbit_preds.pickle
 
 echo "Pipeline Complete!"
