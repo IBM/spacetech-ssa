@@ -15,12 +15,9 @@
 import os
 import logging
 import argparse
-import itertools
 import numpy as np
 import pandas as pd
 import datetime as dt
-import xgboost as xgb
-import os.path as path
 import physics_model as pm
 import spacetrack_etl as st
 from functools import partial
@@ -82,8 +79,8 @@ def predict_orbit(row, pred_start, timesteps):
         timesteps = [0] + timesteps
     else:
         # The row's epoch is behind the prediction window start timestamp so we
-        # calculate the number of seconds we need to propagate the orbit to have
-        # the epoch be the same as the prediction start time.
+        # calculate the number of seconds we need to propagate the orbit to
+        # have the epoch be the same as the prediction start time.
         offset = (pred_start - row.epoch).total_seconds()
         timesteps = [offset] + timesteps
 
@@ -104,6 +101,7 @@ def predict_orbit(row, pred_start, timesteps):
 
 DEFAULT_N_DAYS = 3
 DEFAULT_TIMESTEP = 600
+
 
 def predict_orbits(df, ml_models,
                    n_days=DEFAULT_N_DAYS,
@@ -146,7 +144,10 @@ def predict_orbits(df, ml_models,
     orbit_predictor = partial(predict_orbit,
                               pred_start=pred_start,
                               timesteps=timesteps)
-    err_est = lambda preds: err_ml.predict_err(ml_models, preds)
+
+    def err_est(preds):
+        return err_ml.predict_err(ml_models, preds)
+
     logger.info('Predicting Orbits...')
     df['physics_preds'] = df.apply(orbit_predictor, axis=1)
     logger.info('Estimating physics errors...')
@@ -220,7 +221,7 @@ if __name__ == '__main__':
 
     if args.norad_id_file:
         with open(args.norad_id_file) as norad_id_file:
-            norad_ids = [l.strip() for l in norad_id_file.readlines()]
+            norad_ids = [line.strip() for line in norad_id_file.readlines()]
     else:
         norad_ids = []
 

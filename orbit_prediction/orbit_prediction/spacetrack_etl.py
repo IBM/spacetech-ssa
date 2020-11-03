@@ -50,7 +50,7 @@ def get_leo_aso_catalog(stc, norad_ids=None):
     if norad_ids:
         query_params['norad_cat_id'] = norad_ids
     else:
-        query_params['period']  = op.less_than(128),
+        query_params['period'] = op.less_than(128),
     leo_asos = stc.satcat(**query_params)
     return pd.DataFrame(leo_asos)
 
@@ -72,9 +72,12 @@ def get_object_types(aso_df):
     col_mapper = {'NORAD_CAT_ID': 'aso_id', 'OBJECT_TYPE': 'object_type'}
     # Standardize the column names
     object_types = aso_df[cols].rename(columns=col_mapper)
+
     # Lowercase the object type strings and replace spaces with underscores
-    norm_func = lambda s: s.lower().replace(' ', '_')
-    object_types['object_type'] = object_types.object_type.apply(norm_func)
+    def norm_str(s):
+        return s.lower().replace(' ', '_')
+
+    object_types['object_type'] = object_types.object_type.apply(norm_str)
     return object_types
 
 
@@ -165,10 +168,7 @@ def get_aso_data(tles):
     return pd.DataFrame(tles_data)
 
 
-DEFAULT_PAST_N_DAYS = 30
-
-def build_leo_df(stc, norad_ids=None, past_n_days=DEFAULT_PAST_N_DAYS,
-                 only_latest=False):
+def build_leo_df(stc, norad_ids=None, past_n_days=30, only_latest=False):
     """Builds a pandas DataFrame of LEO ASO orbit observations from data
     provided by USSTRATCOM via space-track.org
 
@@ -220,14 +220,15 @@ def build_leo_df(stc, norad_ids=None, past_n_days=DEFAULT_PAST_N_DAYS,
         chunk_tles = get_tles(chunk_tle_str)
         leo_tles += chunk_tles
     logger.info('Finished fetching TLEs')
-    logger.info(f'Calculating orbital state vectors for {len(leo_tles)} TLEs...')
+    tle_cnt = len(leo_tles)
+    logger.info(f'Calculating orbital state vectors for {tle_cnt} TLEs...')
     aso_data = get_aso_data(leo_tles)
     object_types = get_object_types(leo_asos)
     aso_data = aso_data.merge(object_types, on='aso_id', how='left')
     return aso_data
 
 
-def st_callback(unitl):
+def st_callback(until):
     """Log the number of seconds the program is sleeping to stay
     within Space Track's API rate limit
 
@@ -276,7 +277,7 @@ if __name__ == '__main__':
         '--past_n_days',
         help=('The number of days into the past to fetch orbit data for each '
               'ASO, defaults to 30 days'),
-        default=DEFAULT_PAST_N_DAYS,
+        default=30,
         type=int
     )
     parser.add_argument(
@@ -297,7 +298,7 @@ if __name__ == '__main__':
 
     if args.norad_id_file:
         with open(args.norad_id_file) as norad_id_file:
-            norad_ids = [l.strip() for l in norad_id_file.readlines()]
+            norad_ids = [line.strip() for line in norad_id_file.readlines()]
     else:
         norad_ids = []
 

@@ -21,7 +21,7 @@ import pandas as pd
 import xgboost as xgb
 import matplotlib.pyplot as plt
 import sklearn.metrics as metrics
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import train_test_split
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
