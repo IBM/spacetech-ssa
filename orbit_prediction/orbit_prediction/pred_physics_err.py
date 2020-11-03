@@ -14,7 +14,6 @@
 
 import os
 import logging
-import argparse
 import itertools
 import numpy as np
 import pandas as pd
@@ -215,32 +214,13 @@ def train_models(data, params={}, eval_metric='rmse'):
     return models
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description=('Train baseline XGBoost models to estimate physical '
-                     'prediction error'),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        '--input_path',
-        help=('The path to the parquet file containing the physical model '
-              'prediction training data'),
-        type=str,
-        required=True
-    )
-    parser.add_argument(
-        '--use_gpu',
-        help='Use a GPU in model training',
-        action='store_true'
-    )
-    parser.add_argument(
-        '--out_dir',
-        help=('The directory to serialize the models to'),
-        type=str,
-        required=True
-    )
-    args = parser.parse_args()
+def run(args):
+    """Trains baseline XGBoost models to estimate physical model error based
+    on parameters supplied by the CLI.
 
+    :param args: The command line arguments
+    :type args: argparse.Namespace
+    """
     logger.info('Loading physical model orbit prediction training data...')
     physics_pred_df = pd.read_parquet(args.input_path)
     logger.info('Building training and test sets...')

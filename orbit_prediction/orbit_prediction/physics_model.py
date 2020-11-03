@@ -15,7 +15,6 @@
 # Standard libraries
 import os
 import logging
-import argparse
 import itertools
 import datetime as dt
 # Data processing libraries
@@ -156,13 +155,7 @@ def predict_orbit(window):
     return future_rows
 
 
-DEFAULT_LAST_N_DAYS = 30
-DEFAULT_N_PRED_DAYS = 3
-
-
-def predict_orbits(df,
-                   last_n_days=DEFAULT_LAST_N_DAYS,
-                   n_pred_days=DEFAULT_N_PRED_DAYS):
+def predict_orbits(df, last_n_days, n_pred_days):
     """Use a physics astrodynamics model to predict the orbits of the ASOs
     in the provided DataFrame.
 
@@ -216,37 +209,13 @@ def calc_physics_error(df):
     return df
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Predict orbits using physics model.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        '--input_path',
-        required=True,
-        help=('The path to the parquet file to load the orbit observation'
-              'DataFrame from')
-    )
-    parser.add_argument(
-        '--output_path',
-        required=True,
-        help=('The path to the parquet file to save the physics model'
-              'predictions to')
-    )
-    parser.add_argument(
-        '--last_n_days',
-        help='Only use observations from the last `n` days',
-        type=int,
-        default=DEFAULT_LAST_N_DAYS
-    )
-    parser.add_argument(
-        '--n_pred_days',
-        help='The number days in the prediction window',
-        type=int,
-        default=DEFAULT_N_PRED_DAYS
-    )
-    args = parser.parse_args()
+def run(args):
+    """Builds a training data set of physics model errors based on the
+    parameters supplied by the CLI.
 
+    :param args: The command line arguments
+    :type args: argparse.Namespace
+    """
     logger.info('Loading input DataFrame...')
     input_df = pd.read_parquet(args.input_path)
     logger.info('Predicting orbits...')

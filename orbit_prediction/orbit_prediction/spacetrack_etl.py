@@ -15,7 +15,6 @@
 import os
 import time
 import logging
-import argparse
 import numpy as np
 import pandas as pd
 from tletools import TLE
@@ -81,7 +80,7 @@ def get_object_types(aso_df):
     return object_types
 
 
-def get_leo_tles_str(stc, norad_ids, past_n_days, only_latest):
+def get_leo_tles_str(stc, norad_ids, last_n_days, only_latest):
     """Uses the Space Track TLE API to get all the TLEs for the ASOs specified
     by the `norad_ids` for the specified time period.
 
@@ -91,8 +90,8 @@ def get_leo_tles_str(stc, norad_ids, past_n_days, only_latest):
     :param norad_ids: The NORAD IDs of the ASOs to get the TLEs for
     :type norad_ids: [str]
 
-    :param past_n_days: The number of past days to get TLEs for
-    :type past_n_days: int
+    :param last_n_days: The number of past days to get TLEs for
+    :type last_n_days: int
 
     :param only_latest: Whether or not to only fetch the latest TLE for
         each ASO
@@ -102,7 +101,7 @@ def get_leo_tles_str(stc, norad_ids, past_n_days, only_latest):
     :rtype: str
     """
     query_params = {
-        'epoch': f'>now-{past_n_days}',
+        'epoch': f'>now-{last_n_days}',
         'norad_cat_id': norad_ids,
         'format': '3le'
     }
@@ -116,7 +115,7 @@ def get_leo_tles_str(stc, norad_ids, past_n_days, only_latest):
 
 
 def get_tles(raw_tle_str):
-    """Parses the raw TLE string and converts it to TLE objects
+    """Parses the raw TLE string and converts it to TLE objects.
 
     :param raw_tle_str: The raw string form of the TLEs
     :type raw_tle_str: str
@@ -138,8 +137,8 @@ def get_tles(raw_tle_str):
 
 
 def get_aso_data(tles):
-    """Extracts the necessary data from the TLE objects
-    for doing orbital prediction.
+    """Extracts the necessary data from the TLE objects for doing orbital
+    prediction.
 
     :param tles: The list of TLE objects to extract orbit information from
     :type tles: [tletools.TLE]
@@ -168,9 +167,9 @@ def get_aso_data(tles):
     return pd.DataFrame(tles_data)
 
 
-def build_leo_df(stc, norad_ids=None, past_n_days=30, only_latest=False):
+def build_leo_df(stc, norad_ids, last_n_days, only_latest):
     """Builds a pandas DataFrame of LEO ASO orbit observations from data
-    provided by USSTRATCOM via space-track.org
+    provided by USSTRATCOM via space-track.org.
 
     :param stc: The Space Track API client
     :type stc: spacetrack.SpaceTrackClient
@@ -180,8 +179,8 @@ def build_leo_df(stc, norad_ids=None, past_n_days=30, only_latest=False):
         for all ASOs in LEO.
     :type norad_ids: [str]
 
-    :param past_n_days: The number of past days to get TLEs for
-    :type past_n_days: int
+    :param last_n_days: The number of past days to get TLEs for
+    :type last_n_days: int
 
     :param only_latest: Whether or not to only fetch the latest TLE for
         each ASO
@@ -214,7 +213,7 @@ def build_leo_df(stc, norad_ids=None, past_n_days=30, only_latest=False):
         aso_ids = norad_chunk.to_list()
         chunk_tle_str = get_leo_tles_str(stc,
                                          aso_ids,
-                                         past_n_days,
+                                         last_n_days,
                                          only_latest)
         logger.info('Parsing raw TLE data...')
         chunk_tles = get_tles(chunk_tle_str)
@@ -230,7 +229,7 @@ def build_leo_df(stc, norad_ids=None, past_n_days=30, only_latest=False):
 
 def st_callback(until):
     """Log the number of seconds the program is sleeping to stay
-    within Space Track's API rate limit
+    within Space Track's API rate limit.
 
     :param until: The time the program will sleep til
     :type until: float
@@ -240,6 +239,18 @@ def st_callback(until):
 
 
 def build_space_track_client(username, password, log_delay=True):
+    """Builds a client for the space-track.org API.
+
+    :param username: The space-track.org username
+    :type username: str
+
+    :param password: The space-track.org password
+    :type password: str
+
+    :param log_delay: Whether or not to log when the API client sleeps to
+        prevent rate limiting
+    :type log_delay: bool
+    """
     stc = SpaceTrackClient(identity=username,
                            password=password)
     if log_delay:
@@ -249,62 +260,19 @@ def build_space_track_client(username, password, log_delay=True):
     return stc
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Fetch orbit data from space-track.org',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        '--st_user',
-        help='The username for space-track.org',
-        type=str,
-        required=True
-    )
-    parser.add_argument(
-        '--st_password',
-        help='The password for space-track.org',
-        type=str,
-        required=True
-    )
-    parser.add_argument(
-        '--norad_id_file',
-        help=('A text file containing a single NORAD ID on each row to fetch '
-              'orbit data for. If no file are passed then orbit data for '
-              'all LEO ASOs will be fetched'),
-        type=str
-    )
-    parser.add_argument(
-        '--past_n_days',
-        help=('The number of days into the past to fetch orbit data for each '
-              'ASO, defaults to 30 days'),
-        default=30,
-        type=int
-    )
-    parser.add_argument(
-        '--only_latest',
-        help='Only fetch the latest TLE for each ASO',
-        action='store_true'
-    )
-    parser.add_argument(
-        '--output_path',
-        help='The path to save the orbit data parquet file to',
-        required=True,
-        type=str
-    )
-    args = parser.parse_args()
+def run(args):
+    """Runs the ETL process against the space-track.org API using the arguments
+    supplied by the CLI.
 
+    :param args: The command line arguments
+    :type args: argparse.Namespace
+    """
     space_track_client = build_space_track_client(args.st_user,
                                                   args.st_password)
 
-    if args.norad_id_file:
-        with open(args.norad_id_file) as norad_id_file:
-            norad_ids = [line.strip() for line in norad_id_file.readlines()]
-    else:
-        norad_ids = []
-
     orbit_data_df = build_leo_df(space_track_client,
-                                 norad_ids=norad_ids,
-                                 past_n_days=args.past_n_days,
+                                 norad_ids=args.norad_ids,
+                                 last_n_days=args.last_n_days,
                                  only_latest=args.only_latest)
     logger.info('Serializing data...')
     orbit_data_df.to_parquet(args.output_path)
