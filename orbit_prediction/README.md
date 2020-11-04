@@ -15,14 +15,14 @@ conda activate ssa
 or
 
 ```shell
-python3 -m venv ssa_env
-source ssa_env/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-Then the Python based dependencies can be installed by running
+The `orbit_pred` pipeline CLI can then be installed using the provided Makefile with
 
 ```sh
-pip install -r requirements.txt
+make install
 ```
 
 from this directory.
@@ -34,6 +34,18 @@ from this directory.
 
 
 # Pipeline Components
+
+All available commands can be seen by running
+
+```sh
+orbit_pred -h
+```
+
+and help for individual commands is accessed via
+
+```sh
+orbit_pred <COMMAND> -h
+```
 
 
 ## ETL Orbit Data from USSTRATCOM
@@ -48,7 +60,7 @@ The [ETL module](orbit_prediction/spacetrack_etl.py) provides a CLI with the fol
 -   `--st_user`: The username for space-track.org
 -   `--st_password`: The password for space-track.org
 -   `--norad_id_file`: The path to a text file containing a single NORAD ID on each row to fetch orbit data for. If no file is passed then orbit data for all LEO ASOs will be fetched.
--   `--past_n_days`: The number of days into the past to fetch orbit data for each ASO, defaults to 30 days.
+-   `--last_n_days`: The number of days into the past to fetch orbit data for each ASO, defaults to 30 days.
 -   `--only_latest`: A boolean flag to only fetch the latest TLE for each ASO.
 -   `--output_path`: The path to save the orbit data parquet file to.
 
@@ -58,10 +70,10 @@ The [ETL module](orbit_prediction/spacetrack_etl.py) provides a CLI with the fol
 Running
 
 ```sh
-python orbit_prediction/spacetrack_etl.py --st_user <SPACE TRAC USERNAME> \
+orbit_pred etl --st_user <SPACE TRAC USERNAME> \
        --st_password <SPACE TRACK PASSOWRD> \
        --norad_id_file sample_data/test_norad_ids.txt \
-       --past_n_days 10 \
+       --last_n_days 10 \
        --output_path <OUTPUT>
 ```
 
@@ -70,7 +82,7 @@ will retrieve orbit data from the past 10 days only for the ASOs with the NORAD 
 Running
 
 ```sh
-python orbit_prediction/spacetrack_etl.py --st_user <SPACE TRAC USERNAME> \
+orbit_pred etl  --st_user <SPACE TRAC USERNAME> \
        --st_password <SPACE TRACK PASSOWRD> \
        --only_latest \
        --output_path <OUTPUT>
@@ -102,9 +114,9 @@ The result of running the ETL script is a a [pandas](https://pandas.pydata.org) 
 | object_type | Whether the ASO is a paylod, rocket body, or debris | string   |
 
 
-## Physical Model Orbit Prediction
+## Build a Training Data Set
 
-The [physics model module](orbit_prediction/physics_model.py) uses the [poliastro](https://docs.poliastro.space/en/stable/) astrodynamics library to build a training data set of the predictions and errors made by a physical model so that we can possibly train machine learning models to estimate this prediction error. The baseline physics model is a [two body model](https://en.wikipedia.org/wiki/Two-body_problem) that uses [Cowell's formulation](https://en.wikipedia.org/wiki/Perturbation_(astronomy)#Cowell.27s_formulation) for modeling the perturbation in a ASO's orbit caused by the Earth. We build our training set by:
+The [training set builder](orbit_prediction/build_training_data.py) uses the [poliastro](https://docs.poliastro.space/en/stable/) astrodynamics library to build a training data set of the predictions and errors made by a physical model so that we can try to train machine learning models to estimate this prediction error. The baseline physics model is a [two body model](https://en.wikipedia.org/wiki/Two-body_problem) that uses [Cowell's formulation](https://en.wikipedia.org/wiki/Perturbation_(astronomy)#Cowell.27s_formulation) for modeling the perturbation in a ASO's orbit caused by the Earth. We build our training set by:
 
 1.  Given an orbit data point for an ASO, we find all the orbit data points for that ASO that are within `n` days after the given data point.
 2.  We then create a physics model starting at the at the given orbit data point and propagate the orbit to all the data points that are within `n` days in the future.
@@ -125,37 +137,43 @@ The CLI to create a training data set has the following arguments:
 
 The result of running the training data creation script has the following columns:
 
-| Field            | Description                                                      | Type     |
-|------------------|------------------------------------------------------------------|----------|
-| aso_id           | The unique ID for the ASO                                        | string   |
-| aso_name         | The name of the ASO                                              | string   |
-| epoch            | The timestamp the orbital observation was taken                  | datetime |
-| r_x              | The `x` component of the position vector `r`                     | float    |
-| r_y              | The `y` component of the position vector `r`                     | float    |
-| r_z              | The `z` component of the position vector `r`                     | float    |
-| v_x              | The `x` component of the velocity vector `v`                     | float    |
-| v_y              | The `y` component of the velocity vector `v`                     | float    |
-| v_z              | The `z` component of the velocity vector `v`                     | float    |
-| object_type      | Whether the ASO is a paylod, rocket body, or debris              | string   |
-| start_epoch      | The `epoch` when the prediction was started                      | datetime |
-| elapsed_seconds  | The number of seconds between the `start_epoch` and `epoch`      | float    |
-| physcis_pred_r_x | The `x` component of the predicted position vector `r`           | float    |
-| physcis_pred_r_y | The `y` component of the predicted position vector `r`           | float    |
-| physcis_pred_r_z | The `z` component of the predicted position vector `r`           | float    |
-| physcis_pred_v_x | The `x` component of the predicted velocity vector `v`           | float    |
-| physcis_pred_v_y | The `y` component of the predicted velocity vector `v`           | float    |
-| physcis_pred_v_z | The `z` component of the predicted velocity vector `v`           | float    |
-| physics_err_r_x  | The prediction error in the `x` component of the position vector | float    |
-| physics_err_r_y  | The prediction error in the `y` component of the position vector | float    |
-| physics_err_r_z  | The prediction error in the `z` component of the position vector | float    |
-| physics_err_v_x  | The prediction error in the `x` component of the velocity vector | float    |
-| physics_err_v_y  | The prediction error in the `y` component of the velocity vector | float    |
-| physics_err_v_z  | The prediction error in the `z` component of the velocity vector | float    |
+| Field            | Description                                                               | Type     |
+|------------------|---------------------------------------------------------------------------|----------|
+| aso_id           | The unique ID for the ASO                                                 | string   |
+| aso_name         | The name of the ASO                                                       | string   |
+| epoch            | The timestamp the orbital observation was taken                           | datetime |
+| r_x              | The `x` component of the position vector `r`                              | float    |
+| r_y              | The `y` component of the position vector `r`                              | float    |
+| r_z              | The `z` component of the position vector `r`                              | float    |
+| v_x              | The `x` component of the velocity vector `v`                              | float    |
+| v_y              | The `y` component of the velocity vector `v`                              | float    |
+| v_z              | The `z` component of the velocity vector `v`                              | float    |
+| object_type      | Whether the ASO is a paylod, rocket body, or debris                       | string   |
+| start_epoch      | The `epoch` when the prediction was started                               | datetime |
+| start_r_x        | The `x` component of the position vector `r` where the prediction started | float    |
+| start_r_y        | The `y` component of the position vector `r` where the prediction started | float    |
+| start_r_z        | The `z` component of the position vector `r` where the prediction started | float    |
+| start_v_x        | The `x` component of the velocity vector `v` where the prediction started | float    |
+| start_v_y        | The `y` component of the velocity vector `v` where the prediction started | float    |
+| start_v_z        | The `z` component of the velocity vector `v` where the prediction started | float    |
+| elapsed_seconds  | The number of seconds between the `start_epoch` and `epoch`               | float    |
+| physics_pred_r_x | The `x` component of the predicted position vector `r`                    | float    |
+| physics_pred_r_y | The `y` component of the predicted position vector `r`                    | float    |
+| physics_pred_r_z | The `z` component of the predicted position vector `r`                    | float    |
+| physics_pred_v_x | The `x` component of the predicted velocity vector `v`                    | float    |
+| physics_pred_v_y | The `y` component of the predicted velocity vector `v`                    | float    |
+| physics_pred_v_z | The `z` component of the predicted velocity vector `v`                    | float    |
+| physics_err_r_x  | The prediction error in the `x` component of the position vector          | float    |
+| physics_err_r_y  | The prediction error in the `y` component of the position vector          | float    |
+| physics_err_r_z  | The prediction error in the `z` component of the position vector          | float    |
+| physics_err_v_x  | The prediction error in the `x` component of the velocity vector          | float    |
+| physics_err_v_y  | The prediction error in the `y` component of the velocity vector          | float    |
+| physics_err_v_z  | The prediction error in the `z` component of the velocity vector          | float    |
 
 
 ## Training Machine Learning Models
 
-The [error prediction module](orbit_prediction/pred_physics_err.py) provides a process for using [XGBoost](https://xgboost.readthedocs.io/en/latest/) to build baseline [gradient boosted](https://en.wikipedia.org/wiki/Gradient_boosting) [regression trees](https://en.wikipedia.org/wiki/Decision_tree_learning) models to estimate the error made by the physics model in predicting orbits.
+The [ML module](orbit_prediction/ml_model.py) provides a process for using [XGBoost](https://xgboost.readthedocs.io/en/latest/) to build baseline [gradient boosted](https://en.wikipedia.org/wiki/Gradient_boosting) [regression trees](https://en.wikipedia.org/wiki/Decision_tree_learning) models to estimate the error made by the physics model in predicting orbits.
 
 
 ### Features
@@ -163,12 +181,18 @@ The [error prediction module](orbit_prediction/pred_physics_err.py) provides a p
 The features used by the baseline models are:
 
 -   `elapsed_seconds`: The number of seconds that the physical model predicted into the future.
--   `physcis_pred_r_x`: The `x` component of the predicted position vector `r`
--   `physcis_pred_r_y`: The `y` component of the predicted position vector `r`
--   `physcis_pred_r_z`: The `z` component of the predicted position vector `r`
--   `physcis_pred_v_x`: The `x` component of the predicted velocity vector `v`
--   `physcis_pred_v_y`: The `y` component of the predicted velocity vector `v`
--   `physcis_pred_v_z`: The `z` component of the predicted velocity vector `v`
+-   `start_pred_r_x`: The `x` component of the position vector `r` where the prediction began
+-   `start_pred_r_y`: The `y` component of the position vector `r` where the prediction began
+-   `start_pred_r_z`: The `z` component of the position vector `r` where the prediction began
+-   `start_pred_v_x`: The `x` component of the velocity vector `v` where the prediction began
+-   `start_pred_v_y`: The `y` component of the velocity vector `v` where the prediction began
+-   `start_pred_v_z`: The `z` component of the velocity vector `v` where the prediction began
+-   `physics_pred_r_x`: The `x` component of the predicted position vector `r`
+-   `physics_pred_r_y`: The `y` component of the predicted position vector `r`
+-   `physics_pred_r_z`: The `z` component of the predicted position vector `r`
+-   `physics_pred_v_x`: The `x` component of the predicted velocity vector `v`
+-   `physics_pred_v_y`: The `y` component of the predicted velocity vector `v`
+-   `physics_pred_v_z`: The `z` component of the predicted velocity vector `v`
 
 
 ### ML Models
@@ -188,7 +212,7 @@ We independently build a baseline [XGBRegressor](https://xgboost.readthedocs.io/
 We can train the baseline models by running
 
 ```sh
-python orbit_prediction/pred_physics_err.py
+orbit_pred train_models
 ```
 
 with the following arguments:
@@ -214,7 +238,7 @@ The [orbit prediction module](orbit_prediction/pred_orbits.py) has a CLI to:
 The CLI can be run via
 
 ```sh
-python orbit_prediction/pred_orbits.py
+orbit_pred pred_orbits
 ```
 
 with the following arguments:
