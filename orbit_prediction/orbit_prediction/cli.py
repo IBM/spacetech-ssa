@@ -1,16 +1,30 @@
+# Copyright 2020 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import sys
 import argparse
-import orbit_prediction.physics_model as pm
-import orbit_prediction.spacetrack_etl as etl
-import orbit_prediction.pred_physics_err as err
 import orbit_prediction.pred_orbits as po
+import orbit_prediction.spacetrack_etl as etl
+import orbit_prediction.ml_model as ml
+import orbit_prediction.build_training_data as td
 
 
 # Functions to run based on the CLI subcommand
 COMMAND_FUNCS = {
     'etl': etl.run,
-    'build_train_data': pm.run,
-    'train_models': err.run,
+    'build_train_data': td.run,
+    'train_models': ml.run,
     'pred_orbits': po.run
 }
 
@@ -198,19 +212,19 @@ def main():
     add_ml_parser(subparsers)
     add_pred_orbits_parser(subparsers)
 
-    # Parse the command line arguments and print the help docs and then exit
+    # Parse the command line arguments and then print the help docs and exit
     # if no sub-command is passed
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
         sys.exit(0)
 
-    # If a NORAD ID file is passed as a paramter, parse the file and the NORAD
+    # If a NORAD ID file is passed as a parameter, parse the file and the NORAD
     # IDs to the arguments as a list
     if args.command in ['etl', 'pred_orbits']:
         add_norad_ids(args)
 
-    # Get the command to run from the subparser and find the function to
+    # Get the command to run from the sub-parser and find the function to
     # dispatch the arguments to
     if args.command:
         command_func = COMMAND_FUNCS[args.command]

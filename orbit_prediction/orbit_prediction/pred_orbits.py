@@ -18,9 +18,9 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 from functools import partial
-import orbit_prediction.physics_model as pm
+import orbit_prediction.ml_model as ml_model
 import orbit_prediction.spacetrack_etl as st
-import orbit_prediction.pred_physics_err as err_ml
+import orbit_prediction.build_training_data as td
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
@@ -72,7 +72,7 @@ def predict_orbit(row, pred_start, timesteps):
         state vectors for each timestep
     :rtype: np.array
     """
-    orbit = pm.build_orbit(row)
+    orbit = td.build_orbit(row)
     if row.epoch == pred_start:
         # The row's epoch is the same as the prediction window start timestamp
         # so we don't need to fast forward the first prediction.
@@ -87,7 +87,7 @@ def predict_orbit(row, pred_start, timesteps):
     ts_preds = []
     elapsed_seconds = 0
     for ts in timesteps:
-        orbit_propagator = pm.build_orbit_propagator(orbit,
+        orbit_propagator = td.build_orbit_propagator(orbit,
                                                      return_orbit=True)
         orbit, orbit_pred = orbit_propagator(ts)
         elapsed_seconds += ts
@@ -140,7 +140,7 @@ def predict_orbits(df, ml_models, n_days, timestep):
                               timesteps=timesteps)
 
     def err_est(preds):
-        return err_ml.predict_err(ml_models, preds)
+        return ml_model.predict_err(ml_models, preds)
 
     logger.info('Predicting Orbits...')
     df['physics_preds'] = df.apply(orbit_predictor, axis=1)
@@ -173,7 +173,7 @@ def run(args):
                                               args.st_password,
                                               norad_ids=args.norad_ids)
     logger.info('Loading ML Models...')
-    ml_models = err_ml.load_models(args.ml_model_dir)
+    ml_models = ml_model.load_models(args.ml_model_dir)
 
     orbit_pred_df = predict_orbits(latest_orbit_data,
                                    ml_models,
