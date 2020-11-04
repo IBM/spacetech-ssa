@@ -15,7 +15,6 @@
 # Standard libraries
 import os
 import logging
-import argparse
 import itertools
 import datetime as dt
 # Data processing libraries
@@ -148,20 +147,15 @@ def predict_orbit(window):
     # Calculate the elapsed time from the starting epoch to the
     # the epoch of all the rows to make predictions for
     time_deltas = future_rows.epoch - future_rows.start_epoch
-    future_rows['elapsed_seconds'] = time_deltas.dt.total_seconds()
+    elapsed_seconds = time_deltas.dt.total_seconds()
+    future_rows['elapsed_seconds'] = elapsed_seconds
     physics_cols = [f'physics_pred_{svc}' for svc in state_vect_comps]
     # Predict the state vectors for each of the rows in the "future"
-    future_rows[physics_cols] = future_rows.elapsed_seconds.apply(orbit_propagator)
+    future_rows[physics_cols] = elapsed_seconds.apply(orbit_propagator)
     return future_rows
 
 
-DEFAULT_LAST_N_DAYS = 30
-DEFAULT_N_PRED_DAYS = 3
-
-
-def predict_orbits(df,
-                   last_n_days=DEFAULT_LAST_N_DAYS,
-                   n_pred_days=DEFAULT_N_PRED_DAYS):
+def predict_orbits(df, last_n_days, n_pred_days):
     """Use a physics astrodynamics model to predict the orbits of the ASOs
     in the provided DataFrame.
 
@@ -187,7 +181,8 @@ def predict_orbits(df,
     window_cols = ['aso_id', pd.Grouper(freq=pred_window_length)]
     windows = [w[1] for w in epoch_df.groupby(window_cols)]
     # Predict the orbits in each window in parallel
-    window_dfs = Parallel(n_jobs=-1)(delayed(predict_orbit)(w) for w in tqdm(windows))
+    window_dfs = Parallel(n_jobs=-1)(delayed(predict_orbit)(w)
+                                     for w in tqdm(windows))
     # Join all of the window prediction DataFrames into a single DataFrame
     physics_pred_df = pd.concat(window_dfs).reset_index(drop=True)
     return physics_pred_df
@@ -214,37 +209,13 @@ def calc_physics_error(df):
     return df
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Predict orbits using physics model.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        '--input_path',
-        required=True,
-        help=('The path to the parquet file to load the orbit observation'
-              'DataFrame from')
-    )
-    parser.add_argument(
-        '--output_path',
-        required=True,
-        help=('The path to the parquet file to save the physics model'
-              'predictions to')
-    )
-    parser.add_argument(
-        '--last_n_days',
-        help='Only use observations from the last `n` days',
-        type=int,
-        default=DEFAULT_LAST_N_DAYS
-    )
-    parser.add_argument(
-        '--n_pred_days',
-        help='The number days in the prediction window',
-        type=int,
-        default=DEFAULT_N_PRED_DAYS
-    )
-    args = parser.parse_args()
+def run(args):
+    """Builds a training data set of physics model errors based on the
+    parameters supplied by the CLI.
 
+    :param args: The command line arguments
+    :type args: argparse.Namespace
+    """
     logger.info('Loading input DataFrame...')
     input_df = pd.read_parquet(args.input_path)
     logger.info('Predicting orbits...')

@@ -14,17 +14,13 @@
 
 import os
 import logging
-import argparse
-import itertools
 import numpy as np
 import pandas as pd
 import datetime as dt
-import xgboost as xgb
-import os.path as path
-import physics_model as pm
-import spacetrack_etl as st
 from functools import partial
-import pred_physics_err as err_ml
+import orbit_prediction.ml_model as ml_model
+import orbit_prediction.spacetrack_etl as st
+import orbit_prediction.build_training_data as td
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
@@ -53,6 +49,7 @@ def get_latest_orbit_data(space_track_user,
     stc = st.build_space_track_client(space_track_user, space_track_password)
     latest_orbit_data = st.build_leo_df(stc,
                                         norad_ids=norad_ids,
+                                        last_n_days=30,
                                         only_latest=True)
     return latest_orbit_data
 
@@ -75,22 +72,22 @@ def predict_orbit(row, pred_start, timesteps):
         state vectors for each timestep
     :rtype: np.array
     """
-    orbit = pm.build_orbit(row)
+    orbit = td.build_orbit(row)
     if row.epoch == pred_start:
         # The row's epoch is the same as the prediction window start timestamp
         # so we don't need to fast forward the first prediction.
         timesteps = [0] + timesteps
     else:
         # The row's epoch is behind the prediction window start timestamp so we
-        # calculate the number of seconds we need to propagate the orbit to have
-        # the epoch be the same as the prediction start time.
+        # calculate the number of seconds we need to propagate the orbit to
+        # have the epoch be the same as the prediction start time.
         offset = (pred_start - row.epoch).total_seconds()
         timesteps = [offset] + timesteps
 
     ts_preds = []
     elapsed_seconds = 0
     for ts in timesteps:
-        orbit_propagator = pm.build_orbit_propagator(orbit,
+        orbit_propagator = td.build_orbit_propagator(orbit,
                                                      return_orbit=True)
         orbit, orbit_pred = orbit_propagator(ts)
         elapsed_seconds += ts
@@ -102,12 +99,7 @@ def predict_orbit(row, pred_start, timesteps):
     return np.stack(ts_preds, axis=0)
 
 
-DEFAULT_N_DAYS = 3
-DEFAULT_TIMESTEP = 600
-
-def predict_orbits(df, ml_models,
-                   n_days=DEFAULT_N_DAYS,
-                   timestep=DEFAULT_TIMESTEP):
+def predict_orbits(df, ml_models, n_days, timestep):
     """Use a physical model to predict the future orbits of all ASOs in the
     provided DataFrame, then use ML models to predict the error in the physics
     predictions, and finally adjust the physical predictions based on the error
@@ -146,7 +138,10 @@ def predict_orbits(df, ml_models,
     orbit_predictor = partial(predict_orbit,
                               pred_start=pred_start,
                               timesteps=timesteps)
-    err_est = lambda preds: err_ml.predict_err(ml_models, preds)
+
+    def err_est(preds):
+        return ml_model.predict_err(ml_models, preds)
+
     logger.info('Predicting Orbits...')
     df['physics_preds'] = df.apply(orbit_predictor, axis=1)
     logger.info('Estimating physics errors...')
@@ -167,68 +162,18 @@ def predict_orbits(df, ml_models,
     return df
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Predict orbits using physical and ML models.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        '--st_user',
-        help='The username for space-track.org',
-        type=str,
-        required=True
-    )
-    parser.add_argument(
-        '--st_password',
-        help='The password for space-track.org',
-        type=str,
-        required=True
-    )
-    parser.add_argument(
-        '--ml_model_dir',
-        help=('The path to the directory containing the error prediction'
-              ' models searilized as JSON'),
-        required=True
-    )
-    parser.add_argument(
-        '--norad_id_file',
-        help=('A text file containing a single NORAD ID on each row to fetch '
-              'orbit data for. If no file are passed then orbit data for '
-              'all LEO ASOs will be fetched'),
-        type=str
-    )
-    parser.add_argument(
-        '--n_days',
-        help='The number of days in the future to make orbit predictions for',
-        default=DEFAULT_N_DAYS,
-        type=int
-    )
-    parser.add_argument(
-        '--timestep',
-        help='The frequency in seconds to make orbit predictions for',
-        default=DEFAULT_TIMESTEP,
-        type=float
-    )
-    parser.add_argument(
-        '--output_path',
-        help='The path to save the orbit prediction pickle file to',
-        required=True,
-        type=str
-    )
+def run(args):
+    """Combine physic and ML models to predict future orbits based on parameters
+    specified by the CLI.
 
-    args = parser.parse_args()
-
-    if args.norad_id_file:
-        with open(args.norad_id_file) as norad_id_file:
-            norad_ids = [l.strip() for l in norad_id_file.readlines()]
-    else:
-        norad_ids = []
-
+    :param args: The command line arguments
+    :type args: argparse.Namespace
+    """
     latest_orbit_data = get_latest_orbit_data(args.st_user,
                                               args.st_password,
-                                              norad_ids=norad_ids)
+                                              norad_ids=args.norad_ids)
     logger.info('Loading ML Models...')
-    ml_models = err_ml.load_models(args.ml_model_dir)
+    ml_models = ml_model.load_models(args.ml_model_dir)
 
     orbit_pred_df = predict_orbits(latest_orbit_data,
                                    ml_models,
