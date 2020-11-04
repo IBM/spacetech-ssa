@@ -1,4 +1,4 @@
-.PHONY: all venv test lint clean
+.PHONY: all venv test install clean
 
 VENV := venv
 PYTHON := ${VENV}/bin/python3
@@ -16,6 +16,9 @@ dev_venv: dev_requirements.txt venv
 
 test: dev_venv
 	${PYTHON} -m pytest --flake8
+
+install:
+	python3 -m pip install .
 
 clean:
 	rm -rf venv
