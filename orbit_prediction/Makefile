@@ -15,7 +15,7 @@ dev_venv: dev_requirements.txt venv
 	$(PYTHON) -m pip install -r dev_requirements.txt
 
 test: dev_venv
-	${PYTHON} -m pytest --flake8
+	${PYTHON} -m pytest --cache-clear --flake8
 
 install:
 	python3 -m pip install .
