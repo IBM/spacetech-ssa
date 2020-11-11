@@ -22,14 +22,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from joblib import Parallel, delayed
-# Astrodynamics libraries
-from astropy import units as u
-from astropy.time import Time
-from poliastro.bodies import Earth
-from poliastro.twobody import Orbit
-from poliastro.twobody.propagation import cowell
-from poliastro.core.perturbations import J2_perturbation
-
+# Physics model
+from orbit_prediction.physics_model import PhysicsModel
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
@@ -50,70 +44,6 @@ def get_state_vectors(row):
     return r, v
 
 
-def build_orbit(row, epoch=None):
-    """Builds an Orbit instance from a DataFrame row.
-
-    :param row: A row from the USSTRATCOM ETL DataFrame
-    :type row: pandas.Series
-
-    :param epoch: An optional epoch to instantiate the orbit at, if no epoch is
-        passed then use the epoch in the row
-    :type epoch: pandas.Timestamp
-
-    :return: An orbit object built using the orbital data in the row
-    :rtype: poliastro.twobody.Orbit
-    """
-    r, v = get_state_vectors(row)
-    if not epoch:
-        epoch = row.epoch
-    epoch_time = Time(epoch.to_numpy(), scale='utc')
-    orbit = Orbit.from_vectors(Earth, r, v, epoch=epoch_time)
-    return orbit
-
-
-def build_orbit_propagator(orbit, return_orbit=False):
-    """Builds a function that propagates the given `orbit` to a specified
-    point in time.
-
-    :param orbit: The orbit to build the propagator for
-    :type orbit: from poliastro.twobody.Orbit
-
-    :return: The orbit propagator function
-    :rtype: function
-    """
-    def _propagate_orbit(elapsed_seconds):
-        """Propagates the closed over orbit into the future by
-        `elapsed_seconds` and returns the resulting state vector
-        of the new orbit with the position measured in meters and the
-        velocity measured in meters per second.
-
-        :param elapsed_seconds: The number of seconds into the future to
-            propagate the orbit to
-        :type elapsed_seconds: float
-
-        :return: The 6 element state vector of the propagated orbit
-        :rtype: pd.Series
-        """
-        prop_orbit = orbit.propagate(elapsed_seconds*u.s,
-                                     method=cowell,
-                                     ad=J2_perturbation,
-                                     J2=Earth.J2.value,
-                                     R=Earth.R.to(u.km).value)
-        # Get the propagated position and velocity vectors
-        prop_r, prop_v = prop_orbit.rv()
-        # Join the position and velocity vectors into a single vector
-        # after converting them to their respective measurements
-        prop_state_vect = np.concatenate([prop_r.to(u.m).to_value(),
-                                          prop_v.to(u.m/u.s).to_value()])
-
-        if return_orbit:
-            return prop_orbit, prop_state_vect
-        else:
-            return pd.Series(prop_state_vect)
-
-    return _propagate_orbit
-
-
 def predict_orbit(window):
     """Predict the state vectors of each future timestep in the given `window`
     using a physics astrodynamics model.
@@ -128,12 +58,12 @@ def predict_orbit(window):
     # is the last row
     start_row = window.iloc[-1]
     start_epoch = start_row.name
-    # Build an orbit object for the starting point of the timestep window
-    orbit = build_orbit(start_row, start_epoch)
-    # Build a function that will propagate the orbit to the future timesteps
-    orbit_propagator = build_orbit_propagator(orbit)
-    # The rows that we will predict the orbit for are all the rows in the
-    # `window` but the last row
+    start_r, start_v = get_state_vectors(start_row)
+    start_state = np.concatenate((np.array([start_epoch]),
+                                  start_r, start_v))
+    # Build an orbit model
+    orbit_model = PhysicsModel()
+    orbit_model.fit([start_state])
     future_rows = window.iloc[:-1].reset_index()
     # We add the epoch and the state vector components of the starting row
     # to the rows we will use the physics model to make predictions for
@@ -148,7 +78,8 @@ def predict_orbit(window):
     future_rows['elapsed_seconds'] = elapsed_seconds
     physics_cols = [f'physics_pred_{svc}' for svc in state_vect_comps]
     # Predict the state vectors for each of the rows in the "future"
-    future_rows[physics_cols] = elapsed_seconds.apply(orbit_propagator)
+    predicted_orbits = orbit_model.predict([elapsed_seconds.to_numpy()])
+    future_rows[physics_cols] = predicted_orbits[0]
     return future_rows
 
 
