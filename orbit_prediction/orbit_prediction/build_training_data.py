@@ -36,21 +36,18 @@ logger = logging.getLogger(__name__)
 
 
 def get_state_vectors(row):
-    """Gets the position and velocity vectors from the DataFrame `row` along
-    with their respective measurement units.
+    """Gets the position and velocity vectors from the DataFrame `row`.
 
     :param row: The row to extract the state vectors from
     :type row: pandas.Series
 
-    :return: The position and velocity vectors with measurement units
-    :rtype: (astropy.units.quantity.Quantity, astropy.units.quantity.Quantity)
+    :return: The position and velocity vectors
+    :rtype: (numpy.array, numpy.array)
     """
     comps = ['x', 'y', 'z']
-    position = row[[f'r_{comp}' for comp in comps]].to_numpy()
-    position_vect = position * u.m
-    velocity = row[[f'v_{comp}' for comp in comps]].to_numpy()
-    velocity_vect = velocity * (u.m / u.s)
-    return position_vect, velocity_vect
+    r = row[[f'r_{comp}' for comp in comps]].to_numpy()
+    v = row[[f'v_{comp}' for comp in comps]].to_numpy()
+    return r, v
 
 
 def build_orbit(row, epoch=None):
