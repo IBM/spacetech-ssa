@@ -40,6 +40,7 @@ orbit_pred pred_orbits --st_user $ST_USER \
        --st_password $ST_PASSWORD \
        --ml_model_dir /tmp/ssa_test/err_models \
        --norad_id_file sample_data/test_norad_ids.txt \
+       --timestep 86400 \
        --output_path /tmp/ssa_test/orbit_preds.pickle
 
 echo "Pipeline Complete!"
