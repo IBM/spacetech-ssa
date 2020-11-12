@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-.PHONY : login build run run_dev push clean
+.PHONY : build run clean
 
 build:
 	docker build -t ssa-conj-search:latest .
