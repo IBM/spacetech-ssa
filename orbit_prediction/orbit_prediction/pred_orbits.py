@@ -17,10 +17,10 @@ import logging
 import numpy as np
 import pandas as pd
 import datetime as dt
-from functools import partial
-import orbit_prediction.ml_model as ml_model
-import orbit_prediction.spacetrack_etl as st
-import orbit_prediction.build_training_data as td
+import orbit_prediction.spacetrack_etl as etl
+from orbit_prediction.ml_model import ErrorGBRT
+from orbit_prediction import get_state_vect_cols
+from orbit_prediction.physics_model import PhysicsModel
 
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
@@ -46,60 +46,15 @@ def get_latest_orbit_data(space_track_user,
     :return: A DataFrame containing the latest TLE data for the requested ASOs
     :rtype: pandas.DataFrame
     """
-    stc = st.build_space_track_client(space_track_user, space_track_password)
-    latest_orbit_data = st.build_leo_df(stc,
-                                        norad_ids=norad_ids,
-                                        last_n_days=30,
-                                        only_latest=True)
+    stc = etl.build_space_track_client(space_track_user, space_track_password)
+    etl_client = etl.SpaceTrackETL(stc)
+    latest_orbit_data = etl_client.build_leo_df(norad_ids=norad_ids,
+                                                last_n_days=30,
+                                                only_latest=True)
     return latest_orbit_data
 
 
-def predict_orbit(row, pred_start, timesteps):
-    """Uses a physical model to predict the orbital state vectors
-    for each provided timestep into the future.
-
-    :param row: The DataFrame row to make the orbit predictions for
-    :type row: pandas.Series
-
-    :param pred_start: The timestamp at which to start the prediction window
-    :type pred_start: pandas.Timestamp
-
-    :param timestep: A list of seconds into the future to predict the orbit
-       for
-    :type timestep: [float]
-
-    :return: The elapsed seconds from `pred_start` and the predicted
-        state vectors for each timestep
-    :rtype: np.array
-    """
-    orbit = td.build_orbit(row)
-    if row.epoch == pred_start:
-        # The row's epoch is the same as the prediction window start timestamp
-        # so we don't need to fast forward the first prediction.
-        timesteps = [0] + timesteps
-    else:
-        # The row's epoch is behind the prediction window start timestamp so we
-        # calculate the number of seconds we need to propagate the orbit to
-        # have the epoch be the same as the prediction start time.
-        offset = (pred_start - row.epoch).total_seconds()
-        timesteps = [offset] + timesteps
-
-    ts_preds = []
-    elapsed_seconds = 0
-    for ts in timesteps:
-        orbit_propagator = td.build_orbit_propagator(orbit,
-                                                     return_orbit=True)
-        orbit, orbit_pred = orbit_propagator(ts)
-        elapsed_seconds += ts
-        # Create a numpy array where the first value is number of seconds
-        # that have elpased since the prediction window's start time and then
-        # the next six values are the predicted orbital state vector.
-        ts_pred = np.insert(orbit_pred, 0, elapsed_seconds, axis=0)
-        ts_preds.append(ts_pred)
-    return np.stack(ts_preds, axis=0)
-
-
-def predict_orbits(df, ml_models, n_days, timestep):
+def predict_orbits(df, physics_model, ml_model, n_days, timestep):
     """Use a physical model to predict the future orbits of all ASOs in the
     provided DataFrame, then use ML models to predict the error in the physics
     predictions, and finally adjust the physical predictions based on the error
@@ -108,9 +63,12 @@ def predict_orbits(df, ml_models, n_days, timestep):
     :param df: The latest TLE data for the ASOs to predict the orbits of
     :type df: pandas.DataFrame
 
-    :param ml_models: The ML models to use to estimate the error for each
+    :param physics_model: The physics model to use for making predictions
+    :type physics_model: orbit_prediction.physics_model.PhysicsModel
+
+    :param ml_model: The ML model to use to estimate the error for each
         component of the predicted state vector
-    :type ml_models: [xgboost.XGBRegressor]
+    :type ml_model: orbit_prediction.ml_model.ErrorGBRT
 
     :param n_days: The number of days into the future to predict orbits for
     :type n_days: int
@@ -123,6 +81,11 @@ def predict_orbits(df, ml_models, n_days, timestep):
         as columns
     :rtype: pandas.DataFrame
     """
+    # The columns needed by the physics model to make orbit predictions
+    physics_cols = ['epoch'] + get_state_vect_cols()
+    start_states = df[physics_cols].to_numpy()
+    physics_model.fit(start_states)
+
     # Use the latest epoch in the dataset as the start of the prediction window
     pred_start = df.epoch.max()
     pred_end = pred_start + dt.timedelta(days=n_days)
@@ -133,32 +96,36 @@ def predict_orbits(df, ml_models, n_days, timestep):
     # Calculate how many predictions we will make based on the
     # the length of the prediction window and the timestep
     n_pred_intervals = int(pred_window_seconds / timestep) - 1
-    timesteps = [timestep]*n_pred_intervals
-
-    orbit_predictor = partial(predict_orbit,
-                              pred_start=pred_start,
-                              timesteps=timesteps)
-
-    def err_est(preds):
-        return ml_model.predict_err(ml_models, preds)
+    # The amount, in seconds, we need to offset each timestep so
+    # they line up with the prediction start time
+    offsets = (pred_start - df.epoch).dt.total_seconds().to_numpy()
+    # Transform the offsets array to be a column vector
+    offsets = offsets[:, np.newaxis]
+    # An array of ones for each timestep
+    timesteps = np.ones((len(df), n_pred_intervals))
+    # Each timestep contains its ordinal position in the array
+    timesteps = timesteps * range(1, n_pred_intervals+1)
+    # Multiply each ordinal position with the timestep plus the offset
+    timesteps = timesteps * (offsets + timestep)
+    # Prepend the offset to the timesteps array
+    timesteps = np.hstack((offsets, timesteps))
 
     logger.info('Predicting Orbits...')
-    df['physics_preds'] = df.apply(orbit_predictor, axis=1)
-    logger.info('Estimating physics errors...')
-    df['ml_err_preds'] = df.physics_preds.apply(err_est)
+    physics_preds = physics_model.predict(timesteps)
 
-    # Convert the physical predictions to a numpy 3D array and drop
-    # the first element of the last axis which is the elapsed time
-    physics_array = np.stack(df.physics_preds.to_numpy())[:, :, 1:]
-    ml_array = np.stack(df.ml_err_preds.to_numpy())
-    # the corrected predictions are the physics predictions with the
-    # estimated errors subtracted off
-    corrected_preds = physics_array - ml_array
-    # Convert the 3D numpy array into a list of 2D arrays
-    orbit_preds = [corrected_preds[i]
-                   for i
-                   in range(corrected_preds.shape[0])]
-    df['orbit_preds'] = pd.Series(orbit_preds)
+    logger.info('Estimating physics errors...')
+    Xs = np.concatenate((timesteps[:, :, np.newaxis], physics_preds),
+                        axis=2)
+    ml_preds = np.array([ml_model.predict(X) for X in Xs])
+    # The orbit predictions are the physical predictions corrected by the
+    # learned estimated error
+    orbit_preds = physics_preds - ml_preds
+
+    # Add everything as columns to the DataFrame
+    df['physics_preds'] = pd.Series([pp for pp in physics_preds])
+    df['ml_err_preds'] = pd.Series(mp for mp in ml_preds)
+    df['orbit_preds'] = [op for op in orbit_preds]
+
     return df
 
 
@@ -172,11 +139,15 @@ def run(args):
     latest_orbit_data = get_latest_orbit_data(args.st_user,
                                               args.st_password,
                                               norad_ids=args.norad_ids)
+    physics_model = PhysicsModel(n_jobs=-1)
+
     logger.info('Loading ML Models...')
-    ml_models = ml_model.load_models(args.ml_model_dir)
+    ml_model = ErrorGBRT()
+    ml_model.load(args.ml_model_dir)
 
     orbit_pred_df = predict_orbits(latest_orbit_data,
-                                   ml_models,
+                                   physics_model,
+                                   ml_model,
                                    n_days=args.n_days,
                                    timestep=args.timestep)
     logger.info('Serializing Results...')
