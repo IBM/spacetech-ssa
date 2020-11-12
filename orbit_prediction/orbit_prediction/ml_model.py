@@ -12,142 +12,184 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Standard lib imports
 import os
 import logging
-import itertools
+from collections import OrderedDict
+from orbit_prediction import get_state_vect_cols
+# Numeric/ML lib imports
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 import matplotlib.pyplot as plt
 import sklearn.metrics as metrics
 from sklearn.model_selection import train_test_split
-
+from sklearn.utils.validation import check_X_y, check_array
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 
-def eval_models(models, data):
-    """Calculates the root mean squared error (RMSE) and the coefficient of
-    determination (R^2) for each of the models.
+class ErrorGBRT:
+    """A multiple output regression model that uses GBRT models to estimate the
+    prediction error of an astrodynamical model.
 
-    :param models: Dictionary of the error model for each state vector
-        component
-    :type models: {str: xgboost.XGBRegressor}
-
-    :param data: Dictionary containing the training and test datasets
-    :type data: {str: numpy.array}
-
-    :return: Returns a DataFrame containing the evaluation metric results
-    :rtype: pandas.DataFrame
+    :param *args **kwargs: All parameters are passed to the underlying XGBoost
+        GBRT implementation.  See here for all available parameters
+        https://xgboost.readthedocs.io/en/latest/python/python_api.html
     """
-    evals = []
-    for target_col, reg in models.items():
-        y_hat = reg.predict(data['X_test'])
-        y = data['y_test'][target_col]
-        rmse = metrics.mean_squared_error(y, y_hat, squared=False)
-        r2 = metrics.r2_score(y, y_hat)
-        eval_dict = {'Error': target_col, 'RMSE': rmse, 'R^2': r2}
-        evals.append(eval_dict)
-    return pd.DataFrame(evals)
+    def __init__(self, *args, **kwargs):
+        self.reg = xgb.XGBRegressor(*args, **kwargs)
+        self._models = OrderedDict()
 
+    def get_model(self, model_name):
+        """Gets a regression model by the name of the error column that
+        it estimates.
 
-def plot_feat_impts(models, data):
-    """Plots the feature importances for each of the error models.
-    For use in an interactive jupyter session.
+        :param model_name: The name of the error column to fetch the model for
+        :type model_name: str
 
-    :param models: Dictionary of the error model for each state vector
-        component
-    :type models: {str: xgboost.XGBRegressor}
+        :return: The model responsible for estimating the error column
+        :rtype: xgboost.XGBRegressor
+        """
+        return self._models.get('model_name')
 
-    :param data: Dictionary containing the training and test datasets
-    :type data: {str: numpy.array}
-    """
-    feat_names = data['X_train'].columns
-    fig, axs = plt.subplots(2, 3, figsize=(10, 10))
-    for (target_col, model), ax in zip(models.items(), axs.flat):
-        feat_imp = pd.Series(model.feature_importances_, index=feat_names)
-        feat_imp.sort_values(ascending=False, inplace=True)
-        feat_imp.plot(kind='bar', ax=ax, title=target_col)
-    plt.ylabel('Feature Importance Score')
-    plt.tight_layout()
+    def set_model(self, model_name, model):
+        """Stores the regression model by the name of the error column that it
+        estimates.
 
+        :param model_name: The name of the error column to store the model as
+        :type model_name: str
 
-def get_state_vect_cols(prefix):
-    """Get the column names of the state vector components with the
-    provided `prefix`.
+        :param model: The regression model to store
+        :type model: xgboost.XGBRegressor
+        """
+        self._models[model_name] = model
 
-    :param prefix: The prefix that is used in front of the state vector
-        components in the column names, examples are `physics_pred` and
-        `physics_err`
-    :type prefix: str
+    def get_models(self):
+        """Gets all the stored models.
 
-    :return: A list of the 6 names of the prefixed state vector components
-    :rtype: [str]
-    """
-    vectors = ['r', 'v']
-    components = ['x', 'y', 'z']
-    col_names = [f'{prefix}_{v}_{c}'
-                 for v, c
-                 in itertools.product(vectors, components)]
-    return col_names
+        :return: A list model name, regression model pairs
+        :rtype: [(str, xgboost.XGBRegressor)]
+        """
+        return list(self._models.items())
 
+    def fit(self, X, ys, eval_metric='rmse'):
+        """Fits the underlying GBRT models on the provided training data.
 
-def load_models(models_dir):
-    """Loads previously trained XGBoost models from the `models_dir`
+        :param X: The feature matrix to use in training
+        :type X: numpy.ndarray
 
-    :param models_dir: The path to where the serialized XGBoost JSON files are
-    :type models_dir: str
+        :param ys: The multiple target columns to use in training
+        :type ys: numpy.ndarray
 
-    :return: A list of the loaded XGBoost models
-    :rtype: [xgboost.XGBRegressor]
-    """
-    ml_models = []
-    model_names = get_state_vect_cols('physics_err')
-    for mn in model_names:
-        model = xgb.XGBRegressor()
-        model_path = os.path.join(models_dir, f'{mn}.json')
-        model.load_model(model_path)
-        ml_models.append(model)
-    return ml_models
+        :param eval_metric: The metric to use to evaluate each GBRT
+            model's performance
+        :type eval_metric: str
 
+        :return: The fitted multi-output regression model
+        :rtype: orbit_prediction.ml_model.ErrorGBRT
+        """
+        # Check that the feature matrix and target matrix are the correct sizes
+        check_X_y(X, ys, multi_output=True)
+        # Get the XGBoost parameters to use for each regressor
+        xgb_params = self.reg.get_params()
+        # Build and train a GBRT model for each target column
+        for target_col in ys.columns:
+            y = ys[target_col]
+            reg = xgb.XGBRegressor(**xgb_params)
+            reg.fit(X, y, eval_metric=eval_metric)
+            self.set_model(target_col, reg)
 
-def save_models(models, models_dir):
-    """Saves the error estimations models as JSON representations.
+        return self
 
-    :param models: Dictionary of the error model for each state vector
-        component
-    :type models: {str: xgboost.XGBRegressor}
+    def predict(self, X):
+        """Uses the underlying GBRT models to estimate each component of the
+        physical model error.
 
-    :param models_dir: The path to save the serialized XGBoost JSON files to
-    :type models_dir: str
-    """
-    for model_name, err_model in models.items():
-        file_name = f'{model_name}.json'
-        file_path = os.path.join(models_dir, file_name)
-        err_model.save_model(file_path)
+        :param X: The feature matrix to make predictions for
+        :type X: numpy.ndarray
 
+        :return: The estimated physical model error for each component
+        :rtype: numpy.ndarray
+        """
+        # Make sure the input matrix is the right shape
+        X = check_array(X)
+        # Each model predicts the error for its respective state
+        # vector component
+        err_preds = [m.predict(X) for (_, m) in self.get_models()]
+        # Orient the error estimates as column vectors
+        err_preds = np.stack(err_preds, axis=1)
+        return err_preds
 
-def predict_err(models, physics_preds):
-    """Uses the provide ML models to predict the error in the physics
-    model orbit prediction.
+    def eval_models(self, X, ys):
+        """Calculates the root mean squared error (RMSE) and the coefficient of
+        determination (R^2) for each of the models.
 
-    :param ml_models: The ML models to use to estimate the error in each
-        of the predicted state vector components.
-    :type ml_models: [xgboost.XGBRegressor]
+        :param X: The feature matrix to use in evaluating the regression models
+        :type X: numpy.ndarray
 
-    :param physcis_preds: The elapsed time in seconds and the predicted
-        state vectors to estimate the errors for
-    :type physcis_preds: numpy.array
+        :param y: The target columns to use in evaluating the regression models
+        :type y: numpy.ndarray
 
-    :return: The estimated errors
-    :rtype: numpy.array
-    """
-    # Each model predicts the error for its respective state vector component
-    err_preds = [m.predict(physics_preds) for m in models]
-    # Orient the error estimates as column vectors
-    err_preds = np.stack(err_preds, axis=1)
-    return err_preds
+        :return: Returns a DataFrame containing the evaluation metric results
+        :rtype: pandas.DataFrame
+        """
+        evals = []
+        for target_col, reg in self.get_models():
+            y_hat = reg.predict(X)
+            y = ys[target_col]
+            rmse = metrics.mean_squared_error(y, y_hat, squared=False)
+            r2 = metrics.r2_score(y, y_hat)
+            eval_dict = {'Error': target_col, 'RMSE': rmse, 'R^2': r2}
+            evals.append(eval_dict)
+        return pd.DataFrame(evals)
+
+    def plot_feat_impts(self, X):
+        """Plots the feature importances for each of the error models.
+        For use in an interactive jupyter session.
+
+        :param X: The feature matrix to use to calculate the feature
+            importances from
+        :type X:
+        """
+        feat_names = X.columns
+        fig, axs = plt.subplots(2, 3, figsize=(10, 10))
+        for (target_col, model), ax in zip(self.get_models(), axs.flat):
+            feat_imp = pd.Series(model.feature_importances_, index=feat_names)
+            feat_imp.sort_values(ascending=False, inplace=True)
+            feat_imp.plot(kind='bar', ax=ax, title=target_col)
+        plt.ylabel('Feature Importance Score')
+        plt.tight_layout()
+
+    def save(self, models_dir):
+        """Saves the error estimations models as JSON representations.
+
+        :param models_dir: The path to save the XGBoost JSON files to
+        :type models_dir: str
+        """
+        for model_name, err_model in self.get_models():
+            file_name = f'{model_name}.json'
+            file_path = os.path.join(models_dir, file_name)
+            err_model.save_model(file_path)
+
+    def load(self, models_dir):
+        """Loads previously trained XGBoost models from the `models_dir`
+
+        :param models_dir: The path to where the XGBoost JSON files are
+        :type models_dir: str
+
+        :return: The error estimation model with the underlying previously
+            trained GBRT models loaded.
+        :rtype: orbit_prediction.ml_model.ErrorGBRT
+        """
+        model_names = get_state_vect_cols('physics_err')
+        for mn in model_names:
+            model = xgb.XGBRegressor()
+            model_path = os.path.join(models_dir, f'{mn}.json')
+            model.load_model(model_path)
+            self.set_model(mn, model)
+        return self
 
 
 def build_train_test_sets(df, test_size=0.2):
@@ -205,13 +247,9 @@ def train_models(data, params={}, eval_metric='rmse'):
     }
     default_params.update(params)
     X, ys = data['X_train'], data['y_train']
-    models = {}
-    for target_col in ys.columns:
-        y = ys[target_col]
-        reg = xgb.XGBRegressor(**default_params)
-        reg.fit(X, y, eval_metric=eval_metric)
-        models[target_col] = reg
-    return models
+    err_model = ErrorGBRT(**default_params)
+    err_model.fit(X, ys, eval_metric=eval_metric)
+    return err_model
 
 
 def run(args):
@@ -231,7 +269,9 @@ def run(args):
         params = {'tree_method': 'hist'}
 
     logger.info('Training Error Models...')
-    err_models = train_models(train_test_data, params=params)
-    logger.info(eval_models(err_models, train_test_data))
+    err_model = train_models(train_test_data, params=params)
+    err_model_eval = err_model.eval_models(train_test_data['X_test'],
+                                           train_test_data['y_test'])
+    logger.info(err_model_eval)
     logger.info('Serializing Error Models...')
-    save_models(err_models, args.out_dir)
+    err_model.save(args.out_dir)
