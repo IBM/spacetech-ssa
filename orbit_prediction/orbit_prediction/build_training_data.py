@@ -23,25 +23,11 @@ import pandas as pd
 from tqdm import tqdm
 from joblib import Parallel, delayed
 # Physics model
+from orbit_prediction import get_state_vect_cols
 from orbit_prediction.physics_model import PhysicsModel
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
-
-
-def get_state_vectors(row):
-    """Gets the position and velocity vectors from the DataFrame `row`.
-
-    :param row: The row to extract the state vectors from
-    :type row: pandas.Series
-
-    :return: The position and velocity vectors
-    :rtype: (numpy.array, numpy.array)
-    """
-    comps = ['x', 'y', 'z']
-    r = row[[f'r_{comp}' for comp in comps]].to_numpy()
-    v = row[[f'v_{comp}' for comp in comps]].to_numpy()
-    return r, v
 
 
 def predict_orbit(window):
@@ -58,9 +44,12 @@ def predict_orbit(window):
     # is the last row
     start_row = window.iloc[-1]
     start_epoch = start_row.name
-    start_r, start_v = get_state_vectors(start_row)
+    # Get the column names of the state vector components
+    state_vect_comps = get_state_vect_cols()
+    # Extract the position and velocity vectors as a numpy array
+    start_state_vect = start_row[state_vect_comps].to_numpy()
     start_state = np.concatenate((np.array([start_epoch]),
-                                  start_r, start_v))
+                                  start_state_vect))
     # Build an orbit model
     orbit_model = PhysicsModel()
     orbit_model.fit([start_state])
@@ -68,7 +57,6 @@ def predict_orbit(window):
     # We add the epoch and the state vector components of the starting row
     # to the rows we will use the physics model to make predictions for
     future_rows['start_epoch'] = start_epoch
-    state_vect_comps = ['r_x', 'r_y', 'r_z', 'v_x', 'v_y', 'v_z']
     for svc in state_vect_comps:
         future_rows[f'start_{svc}'] = start_row[svc]
     # Calculate the elapsed time from the starting epoch to the
