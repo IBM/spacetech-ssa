@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
 import os
-import ibm_boto3
 import pandas as pd
 from czml import CZMLBuilder
-from ibm_botocore.client import Config
 from flask import Flask, request, jsonify, render_template
-from conjunction_search import get_nns_for_object, build_kd_forest
+from conjunction_search.conjunction_search import (get_nns_for_object,
+                                                   build_kd_forest)
 
 app = Flask(__name__)
 DEV = bool(os.environ.get('DEV', False))
@@ -27,33 +25,11 @@ DEV = bool(os.environ.get('DEV', False))
 cesium_api_key = os.environ.get('CESIUM_API_KEY', '')
 
 
-def get_dataframe_from_cos():
-    """Fetches the orbital prediction pandas DataFrame
-    from COS.
-
-    :return: The DataFrame containing the orbital predictions for every
-             ASO
-    :rtype: pandas.DataFrame
-    """
-    cos_endpoint = os.environ.get('COS_ENDPOINT')
-    cos_api_key_id = os.environ.get('COS_API_KEY_ID')
-    cos_instance_crn = os.environ.get('COS_INSTANCE_CRN')
-    cos_client = ibm_boto3.resource('s3',
-                                    ibm_api_key_id=cos_api_key_id,
-                                    ibm_service_instance_id=cos_instance_crn,
-                                    config=Config(signature_version='oauth'),
-                                    endpoint_url=cos_endpoint)
-    cos_bucket = os.environ.get('COS_BUCKET')
-    cos_filename = os.environ.get('COS_FILENAME')
-    df_obj = cos_client.Object(cos_bucket, cos_filename).get()
-    df = pd.read_pickle(io.BytesIO(df_obj['Body'].read()))
-    return df
-
 # Load test data if the env variable DEV is set to True
 if DEV:
     orbit_df = pd.read_pickle('../sample_data/orbit_preds.pickle')
-else:
-    orbit_df = get_dataframe_from_cos()
+# else:
+#     orbit_df = get_dataframe_from_cos()
 
 # Build the KD-trees for each prediction timestep
 kd_forest = build_kd_forest(orbit_df)
