@@ -5,3 +5,5 @@ ibm-cos-sdk
 numpy
 pandas
 sklearn
+pytest
+pytest-flake8

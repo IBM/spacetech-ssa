@@ -13,10 +13,13 @@
 # limitations under the License.
 
 
-.PHONY : build run clean
+.PHONY : build run clean test
 
 build:
 	docker build -t ssa-conj-search:latest .
+
+test: build
+	docker run --rm ssa-conj-search:latest python3 -m pytest --cache-clear --flake8
 
 run: build
 	docker run --rm -i -t \
