@@ -24,9 +24,15 @@ test: build
 run: build
 	docker run --rm -i -t \
         -p 8080:8080 \
-        --env-file=vars.env \
+	--env-file vars.env \
         --name ssa-conj-search \
         ssa-conj-search:latest
+
+jupyter: build
+	docker run --rm \
+	-p 8888:8888 \
+	-v $(shell pwd):/arcade \
+	ssa-conj-search:latest jupyter notebook --allow-root --ip 0.0.0.0
 
 clean:
 	docker rmi ssa-conj-search:latest
