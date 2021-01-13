@@ -25,5 +25,4 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
-ENTRYPOINT ["gunicorn"]
-CMD ["-b", "0.0.0.0:8080", "--preload", "--timeout", "3600", "api:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "--preload", "--timeout", "3600", "api:app"]
