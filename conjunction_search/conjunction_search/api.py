@@ -14,23 +14,19 @@
 
 import os
 import pandas as pd
-from czml import CZMLBuilder
 from flask import Flask, request, jsonify, render_template
+from conjunction_search.czml import CZMLBuilder
+from conjunction_search.data_access import get_orbit_data
 from conjunction_search.conjunction_search import (get_nns_for_object,
                                                    build_kd_forest)
 
 app = Flask(__name__)
-DEV = bool(os.environ.get('DEV', False))
 
 cesium_api_key = os.environ.get('CESIUM_API_KEY', '')
 
 
-# Load test data if the env variable DEV is set to True
-if DEV:
-    orbit_df = pd.read_pickle('../sample_data/orbit_preds.pickle')
-# else:
-#     orbit_df = get_dataframe_from_cos()
-
+# Get orbit data
+orbit_df = get_orbit_data()
 # Build the KD-trees for each prediction timestep
 kd_forest = build_kd_forest(orbit_df)
 
@@ -132,4 +128,4 @@ def conjunction_search(aso_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=DEV, host='0.0.0.0', port=8080)
+    app.run(debug=True, host='0.0.0.0', port=8080)

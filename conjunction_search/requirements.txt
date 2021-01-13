@@ -4,6 +4,8 @@ gunicorn
 ibm-cos-sdk
 numpy
 pandas
+requests
 sklearn
 pytest
 pytest-flake8
+jupyter
