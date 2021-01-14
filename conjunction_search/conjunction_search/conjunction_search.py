@@ -72,10 +72,10 @@ def build_kd_forest(df, leaf_size=700):
     :param df: The orbital prediction DataFrame
     :type df: pandas.DataFrame
 
-    :param leaf_size: Number of points at which to switch to brute-force search.
-                      The default of 700 was found to be the most optimal in the
-                      initial analysis, but more optimal values may arise as data
-                      changes/grows.
+    :param leaf_size: Number of points at which to switch to brute-force
+        search. The default of 700 was found to be the most optimal in the
+        initial analysis, but more optimal values may arise as data
+        changes/grows.
     :type leaf_size: int
 
     :return: A list of data sets and KD-trees for each prediction timestep
@@ -89,9 +89,9 @@ def build_kd_forest(df, leaf_size=700):
 
 
 def _get_nn_for_timestamp(kd_tree, X, timestep, aso_idx, k, radius):
-    """Returns the nearest ASOs to the provided `aso_idx` ASO.  If a `radius` is
-    provided then the results are all the ASOs within that given radius, otherwise
-    the results are the `k` nearest ASOs
+    """Returns the nearest ASOs to the provided `aso_idx` ASO.  If a `radius`
+    is provided then the results are all the ASOs within that given radius,
+    otherwise the results are the `k` nearest ASOs.
 
     :param kd_tree: The KD-tree build for the prediction timestep
     :type kd_tree: sklearn.neighbors.KDTree
@@ -107,16 +107,18 @@ def _get_nn_for_timestamp(kd_tree, X, timestep, aso_idx, k, radius):
     :param aso_idx: The index in `X` of the ASO to find nearest ASOs for
     :type aso_idx: int
 
-    :param k: The number of nearest ASOs to return. Not used if `radius` is passed
+    :param k: The number of nearest ASOs to return. Not used if `radius` is
+        passed
     :type k: int
 
-    :param radius: The radius, in meters, to use in determining what is a near ASO
+    :param radius: The radius, in meters, to use in determining what is a near
+        ASO
     :type radius: float
 
-    :return: A list of tuples representing all ASOs that match the provided query
-             where the first value is the index in `X` of the matching ASO, the
-             second value is the timestep where this match occurred, and the third
-             value is the distance from the query ASO to the matching ASO.
+    :return: A list of tuples representing all ASOs that match the provided
+        query where the first value is the index in `X` of the matching ASO,
+        the second value is the timestep where this match occurred, and the
+        third value is the distance from the query ASO to the matching ASO.
     :rtype: [(int, int, float)]
     """
     query_point = X[aso_idx].reshape(1, -1)
@@ -147,29 +149,36 @@ def get_nns_for_object(df, kd_forest, aso_id, k=1, radius=None):
     :param df: The orbital prediction DataFrame
     :type df: pandas.DataFrame
 
-    :param kd_forest: The data and KD-trees for each orbital prediction timestep
-                      to use to find nearest ASOs.
+    :param kd_forest: The data and KD-trees for each orbital prediction
+        timestep to use to find nearest ASOs.
     :type kd_forest: [(numpy.array, sklearn.neighbors.KDTree)]
 
     :param aso_idx: The index in `X` of the ASO to find nearest ASOs for
     :type aso_idx: int
 
-    :param k: The number of nearest ASOs to return. Not used if `radius` is passed
+    :param k: The number of nearest ASOs to return. Not used if `radius` is
+        passed
     :type k: int
 
-    :param radius: The radius, in meters, to use in determining what is a near ASO
+    :param radius: The radius, in meters, to use in determining what is a near
+        ASO
     :type radius: float
 
-    :return: A list of tuples representing all ASOs that match the provided query
-             where the first value is the index in `X` of the matching ASO, the
-             second value is the timestep where this match occurred, and the third
-             value is the distance from the query ASO to the matching ASO.
+    :return: A list of tuples representing all ASOs that match the provided
+        query where the first value is the index in `X` of the matching ASO,
+        the second value is the timestep where this match occurred, and the
+        third value is the distance from the query ASO to the matching ASO.
     :rtype: [(int, int, float)]
     """
     aso_idx = get_aso_idx_from_id(df, aso_id)
     results = []
     for timestep, (X, kd_tree) in enumerate(kd_forest):
-        result = _get_nn_for_timestamp(kd_tree, X, timestep, aso_idx, k, radius)
+        result = _get_nn_for_timestamp(kd_tree,
+                                       X,
+                                       timestep,
+                                       aso_idx,
+                                       k,
+                                       radius)
         results += result
     results.sort(key=lambda x: x[2])
     if radius is None:

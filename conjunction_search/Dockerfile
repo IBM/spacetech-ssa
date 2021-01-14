@@ -16,14 +16,13 @@
 FROM python:3.8-slim-buster
 
 # We copy just the requirements.txt first to leverage Docker cache
-COPY ./requirements.txt /app/conjunction_search/requirements.txt
+COPY ./requirements.txt /app/requirements.txt
 RUN chmod -R g=u /app
-WORKDIR /app/conjunction_search
+WORKDIR /app
 
 RUN pip install --upgrade pip wheel
 RUN pip install -r requirements.txt
 
 COPY . /app
 
-ENTRYPOINT ["gunicorn"]
-CMD ["-b", "0.0.0.0:8080", "--preload", "--timeout", "3600", "api:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "--preload", "--timeout", "3600", "conjunction_search.api:app"]

@@ -16,6 +16,7 @@ import json
 import pandas as pd
 import datetime as dt
 
+
 class CZMLBuilder:
     """Class for building CZML JSON documents to be used to
     drive a Cesium UI for displaying the results of a conjunction
@@ -27,7 +28,7 @@ class CZMLBuilder:
     :type czml_df: pandas.DataFrame
     """
 
-    FORMAT_STR='%Y-%m-%dT%H:%M:%S.%fZ'
+    FORMAT_STR = '%Y-%m-%dT%H:%M:%S.%fZ'
 
     def __init__(self, czml_df):
         self.czml_df = czml_df
@@ -37,9 +38,10 @@ class CZMLBuilder:
         self.pred_start_dt = self.query_row.pred_start_dt
         self.pred_end_dt = self.query_row.pred_end_dt
         # Calculate the interval in seconds that predictions are made
-        pred_span_seconds = (self.pred_end_dt - self.pred_start_dt).total_seconds()
+        time_interval = (self.pred_end_dt - self.pred_start_dt)
+        pred_span_seconds = time_interval.total_seconds()
         num_pred_timesteps = self.query_row.orbit_preds.shape[0] - 1
-        self.pred_interval =  pred_span_seconds / num_pred_timesteps
+        self.pred_interval = pred_span_seconds / num_pred_timesteps
         # Get strings of timestamps that are used multiple times
         self.pred_start_str = self._format_dt(self.pred_start_dt)
         self.pred_end_str = self._format_dt(self.pred_end_dt)
@@ -86,7 +88,8 @@ class CZMLBuilder:
         conj_descs_df = pd.DataFrame(conj_descs, columns=cols)
         conj_descs_df.sort_values(by=dist_col,
                                   inplace=True)
-        conj_descs_df[dist_col] = conj_descs_df[dist_col].apply(lambda d: f'{d:,}')
+        dists = conj_descs_df[dist_col].apply(lambda d: f'{d:,}')
+        conj_descs_df[dist_col] = dists
         return conj_descs_df
 
     def _build_document_node(self, multiplier=10, doc_name=None):
@@ -108,12 +111,12 @@ class CZMLBuilder:
             'id': 'document',
             'name': doc_name,
             'version': '1.0',
-            'clock':{
+            'clock': {
                 'interval': self.pred_span,
-                'currentTime':self.pred_start_str,
+                'currentTime': self.pred_start_str,
                 'multiplier': multiplier,
-                'range':'LOOP_STOP',
-                'step':'SYSTEM_CLOCK_MULTIPLIER'
+                'range': 'LOOP_STOP',
+                'step': 'SYSTEM_CLOCK_MULTIPLIER'
             }
         }
 
@@ -200,14 +203,14 @@ class CZMLBuilder:
                 'material': {
                     'solidColor': {
                         'color': {
-                            'rgba': [255, 0, 0,255]
+                            'rgba': [255, 0, 0, 255]
                         }
                     }
                 },
-                'arcType':'NONE',
-                'positions':{
-                    'references':[f'{row.aso_id}#position',
-                                  f'{self.query_row.aso_id}#position']
+                'arcType': 'NONE',
+                'positions': {
+                    'references': [f'{row.aso_id}#position',
+                                   f'{self.query_row.aso_id}#position']
                 }
             }
 
@@ -261,7 +264,7 @@ class CZMLBuilder:
                     'cartesian': [0, 0, 0]
                 },
                 'horizontalOrigin': 'CENTER',
-                'image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAADJSURBVDhPnZHRDcMgEEMZjVEYpaNklIzSEfLfD4qNnXAJSFWfhO7w2Zc0Tf9QG2rXrEzSUeZLOGm47WoH95x3Hl3jEgilvDgsOQUTqsNl68ezEwn1vae6lceSEEYvvWNT/Rxc4CXQNGadho1NXoJ+9iaqc2xi2xbt23PJCDIB6TQjOC6Bho/sDy3fBQT8PrVhibU7yBFcEPaRxOoeTwbwByCOYf9VGp1BYI1BA+EeHhmfzKbBoJEQwn1yzUZtyspIQUha85MpkNIXB7GizqDEECsAAAAASUVORK5CYII=',
+                'image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAADJSURBVDhPnZHRDcMgEEMZjVEYpaNklIzSEfLfD4qNnXAJSFWfhO7w2Zc0Tf9QG2rXrEzSUeZLOGm47WoH95x3Hl3jEgilvDgsOQUTqsNl68ezEwn1vae6lceSEEYvvWNT/Rxc4CXQNGadho1NXoJ+9iaqc2xi2xbt23PJCDIB6TQjOC6Bho/sDy3fBQT8PrVhibU7yBFcEPaRxOoeTwbwByCOYf9VGp1BYI1BA+EeHhmfzKbBoJEQwn1yzUZtyspIQUha85MpkNIXB7GizqDEECsAAAAASUVORK5CYII=', # noqa E501
                 'pixelOffset': {
                     'cartesian2': [0, 0]
                 },
