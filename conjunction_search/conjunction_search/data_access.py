@@ -14,6 +14,7 @@
 
 import io
 import os
+import queue
 import requests
 import ibm_boto3
 import numpy as np
@@ -107,7 +108,19 @@ class ArcadeAPIClient:
         :rtype: pandas.DataFrame
         """
         aso_ids = self.get_aso_ids()
-        ephems = [self.get_ephemeris(aso_id) for aso_id in aso_ids]
+        aso_queue = queue.SimpleQueue()
+        for aso_id in aso_ids:
+            aso_queue.put(aso_id)
+
+        ephems = []
+        while not aso_queue.empty():
+            aso_id = aso_queue.get()
+            ephem = self.get_ephemeris(aso_id)
+            if ephem:
+                ephems.append(ephem)
+            else:
+                aso_queue.put(aso_id)
+
         key_map = [('aso_name', 'object_name'),
                    ('aso_id', 'object_id'),
                    ('pred_start_dt', 'start_time'),
