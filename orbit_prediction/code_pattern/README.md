@@ -1,26 +1,12 @@
-- [Predicting Errors in Satellite Orbits with Watson Studio](#org1184076)
-  - [Flow](#orgc26f635)
-  - [Included Technologies](#org6b3183c)
-  - [Prerequisites](#orgd471230)
-  - [Steps](#orgea2b6b3)
-  - [License](#org30da787)
-
-
-<a id="org1184076"></a>
-
 # Predicting Errors in Satellite Orbits with Watson Studio
 
 Low earth orbit (LEO) is a crowded place and the number of anthropogenic space objects (ASOs) entering LEO is rapidly escalating. With this population boom also comes the inevitable increase in close encounters (conjunctions) between objects. The heart of the space situational awareness (SSA) problem is to predict where ASOs are now and where they are going to be in the future. This includes objects from the size of a spec of paint to the International Space Station. In this Code Pattern we utilize [Watson Studio](https://www.ibm.com/cloud/watson-studio) and IBM's [Space Situational Awareness](https://github.com/ibm/spacetech-ssa) project to use machine learning techniques to estimate the error in physics-based astrodynamical models of the orbits of satellites in LEO.
 
 
-<a id="orgc26f635"></a>
-
 ## Flow
 
 ![img](../data_flow.png)
 
-
-<a id="org6b3183c"></a>
 
 ## Included Technologies
 
@@ -32,14 +18,10 @@ Low earth orbit (LEO) is a crowded place and the number of anthropogenic space o
 -   [XGBoost](https://xgboost.ai) for building gradient boosted regression tree error estimation models.
 
 
-<a id="orgd471230"></a>
-
 ## Prerequisites
 
 -   An IBM Cloud account to access [Watson Studio](https://www.ibm.com/cloud/watson-studio)
 
-
-<a id="orgea2b6b3"></a>
 
 ## Steps
 
@@ -51,8 +33,6 @@ Follow below steps if you are not familiar with Watson Studio:
 2.  [Create a notebook](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/creating-notebooks.html) with this template. You can either download the notebook and import it using `From file` tab or get the raw github link of the notebook and import it using the `From URL` tab.
 3.  Run the notebook cell by cell.
 
-
-<a id="org30da787"></a>
 
 ## License
 
