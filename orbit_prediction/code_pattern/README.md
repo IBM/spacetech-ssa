@@ -21,6 +21,7 @@ Low earth orbit (LEO) is a crowded place and the number of anthropogenic space o
 ## Prerequisites
 
 -   An IBM Cloud account to access [Watson Studio](https://www.ibm.com/cloud/watson-studio)
+-   A [Space-Track.org](https://www.space-track.org) account for access to historic satellite orbit data.
 
 
 ## Steps
